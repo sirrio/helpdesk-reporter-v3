@@ -26,4 +26,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# AI tool configs (auto-generated, machine-specific)
+/.agents
+/.claude
+/.codex
+/.junie
 /tests/Browser/Screenshots/
