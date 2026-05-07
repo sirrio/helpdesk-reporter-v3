@@ -1,0 +1,45 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class DatabaseSeeder extends Seeder
+{
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        User::query()->updateOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'isMod' => false,
+                'isAdmin' => false,
+            ],
+        );
+
+        User::query()->updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Admin User',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'isMod' => true,
+                'isAdmin' => true,
+            ],
+        );
+
+        $this->call([
+            SemesterSeeder::class,
+            DegreeSeeder::class,
+            FacultySeeder::class,
+            AttendanceSeeder::class,
+        ]);
+    }
+}
