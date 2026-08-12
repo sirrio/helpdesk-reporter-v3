@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Attendance;
 use App\Models\Degree;
+use App\Models\Faculty;
 use App\Models\Semester;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -68,13 +69,15 @@ class StoreAttendanceRequest extends FormRequest
                 }
 
                 $date = $this->date('date');
-                $semester = Semester::query()
+                $semester = Semester::withTrashed()
                     ->where('semester', $this->string('semester')->toString())
                     ->first();
-                $degree = Degree::query()
-                    ->with('faculty')
+                $degree = Degree::withTrashed()
                     ->where('name', $this->string('degree')->toString())
                     ->first();
+                $assignedFaculty = $degree?->faculty_id === null
+                    ? null
+                    : Faculty::withTrashed()->find($degree->faculty_id);
 
                 if ($semester !== null && ! $date->betweenIncluded($semester->start, $semester->end)) {
                     $validator->errors()->add(
@@ -90,7 +93,7 @@ class StoreAttendanceRequest extends FormRequest
                     );
                 }
 
-                if ($degree?->faculty !== null && $degree->faculty->name !== $this->string('faculty')->toString()) {
+                if ($degree?->faculty_id !== null && $assignedFaculty?->name !== $this->string('faculty')->toString()) {
                     $validator->errors()->add(
                         'faculty',
                         __('Der Fachbereich ist durch den Studiengang vorgegeben.'),

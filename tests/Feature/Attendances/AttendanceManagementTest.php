@@ -156,6 +156,50 @@ it('allows a tutor to update their own attendance entry', function () {
         ->mathHigh->toBeTrue();
 });
 
+it('allows unchanged archived reference values when updating an attendance', function () {
+    $user = User::factory()->create();
+    $semester = Semester::factory()->create([
+        'semester' => 'WS 2025/2026',
+        'start' => '2025-10-01',
+        'end' => '2026-04-30',
+    ]);
+    $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
+    $degree = Degree::factory()->create([
+        'name' => 'Informatik',
+        'faculty_id' => $faculty->id,
+    ]);
+    $attendance = Attendance::factory()
+        ->for($user)
+        ->forSemester($semester)
+        ->forDegree($degree)
+        ->forFaculty($faculty)
+        ->create([
+            'date' => '2026-04-12',
+            'startTime' => '09:00:00',
+            'endTime' => '10:00:00',
+        ]);
+
+    $semester->delete();
+    $degree->delete();
+    $faculty->delete();
+
+    $this->actingAs($user)
+        ->put(route('attendances.update', $attendance), [
+            'semester' => $semester->semester,
+            'date' => '2026-04-12',
+            'startTime' => '09:00',
+            'endTime' => '10:00',
+            'degree' => $degree->name,
+            'faculty' => $faculty->name,
+            'topics' => ['programming'],
+            'online' => false,
+            'visitors' => 7,
+        ])
+        ->assertRedirect();
+
+    expect($attendance->refresh()->visitors)->toBe(7);
+});
+
 it('forbids tutors from updating another tutors attendance entry', function () {
     $attendance = Attendance::factory()->create();
 

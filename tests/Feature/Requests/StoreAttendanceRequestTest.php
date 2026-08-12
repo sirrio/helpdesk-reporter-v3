@@ -128,6 +128,20 @@ it('rejects a faculty that is not assigned to the degree', function () {
         ->assertSessionHasErrors('faculty');
 });
 
+it('rejects an active degree whose assigned faculty is archived', function () {
+    Faculty::query()
+        ->where('name', 'Naturwissenschaften')
+        ->firstOrFail()
+        ->delete();
+    Faculty::factory()->create(['name' => 'Aktiver Fachbereich']);
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'faculty' => 'Aktiver Fachbereich',
+        ]))
+        ->assertSessionHasErrors('faculty');
+});
+
 it('rejects archived form options', function (string $field, string $modelClass, array $attributes, string $value) {
     $model = $modelClass::factory()->create($attributes);
     $model->delete();

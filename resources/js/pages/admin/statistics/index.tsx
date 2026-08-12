@@ -156,13 +156,7 @@ export default function AdminStatisticsIndex({
     function statisticsQuery(
         overrides: Partial<Filters> & { week?: string } = {},
     ): Record<string, string> {
-        return {
-            ...cleanFilters(filters),
-            week,
-            ...Object.fromEntries(
-                Object.entries(overrides).filter(([, value]) => value !== ''),
-            ),
-        };
+        return cleanFilters({ ...filters, week, ...overrides });
     }
 
     function applyFilters(event: FormEvent<HTMLFormElement>): void {
@@ -368,7 +362,10 @@ export default function AdminStatisticsIndex({
                                                 )
                                             }
                                         >
-                                            <SelectTrigger className="w-full">
+                                            <SelectTrigger
+                                                id="statistics-semester-filter"
+                                                className="w-full"
+                                            >
                                                 <SelectValue placeholder="Alle Semester" />
                                             </SelectTrigger>
                                             <SelectContent>

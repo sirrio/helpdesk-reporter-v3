@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Semester;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -15,5 +16,18 @@ it('shows the statistics page with export button', function () {
 
     $page->assertSee('Statistik')
         ->assertSee('Als PDF exportieren')
+        ->assertNoJavaScriptErrors();
+});
+
+it('clears a single applied statistics filter', function () {
+    $semester = Semester::factory()->create(['semester' => 'WS 2025/2026']);
+    $page = visit('/admin/statistics?semester='.urlencode($semester->semester));
+
+    $page->assertQueryStringHas('semester', $semester->semester)
+        ->click('button:has-text("Filter")')
+        ->click('button#statistics-semester-filter')
+        ->click('[role="option"]:has-text("Alle Semester")')
+        ->click('button:has-text("Filter anwenden")')
+        ->assertQueryStringMissing('semester')
         ->assertNoJavaScriptErrors();
 });
