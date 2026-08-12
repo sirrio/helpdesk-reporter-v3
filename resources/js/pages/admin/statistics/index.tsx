@@ -116,6 +116,182 @@ function percentage(value: number, max: number): number {
     return Math.max(4, Math.round((value / max) * 100));
 }
 
+function activeFilterLabels(
+    filters: Filters,
+    formOptions: Props['formOptions'],
+): string[] {
+    return [
+        filters.user &&
+            `Tutor: ${formOptions.tutors.find((tutor) => tutor.value === filters.user)?.label ?? filters.user}`,
+        filters.semester && `Semester: ${filters.semester}`,
+        filters.degree && `Studiengang: ${filters.degree}`,
+        filters.faculty && `Fachbereich: ${filters.faculty}`,
+        filters.topic &&
+            `Thema: ${formOptions.topics.find((topic) => topic.value === filters.topic)?.label ?? filters.topic}`,
+        filters.online === '1' && 'Modus: Online',
+        filters.online === '0' && 'Modus: Präsenz',
+        filters.from && `Von: ${filters.from}`,
+        filters.until && `Bis: ${filters.until}`,
+    ].filter((label): label is string => Boolean(label));
+}
+
+function PrintBreakdown({
+    title,
+    items,
+}: {
+    title: string;
+    items: BreakdownItem[];
+}) {
+    const maxEntries = Math.max(...items.map((item) => item.entries), 0);
+
+    return (
+        <section className="statistics-print-section">
+            <h2>{title}</h2>
+            {items.length === 0 ? (
+                <p className="statistics-print-empty">Keine Daten vorhanden</p>
+            ) : (
+                <div className="statistics-print-breakdown">
+                    {items.map((item) => (
+                        <div key={item.label} className="statistics-print-row">
+                            <div className="statistics-print-row-label">
+                                <span>{item.label}</span>
+                                <strong>{item.entries}</strong>
+                            </div>
+                            <div className="statistics-print-bar">
+                                <span
+                                    style={{
+                                        width: `${percentage(item.entries, maxEntries)}%`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+}
+
+function PrintStatistics({ filters, formOptions, stats }: Props) {
+    const filterLabels = activeFilterLabels(filters, formOptions);
+    const maxWeeklyEntries = Math.max(
+        ...stats.weekly.days.map((day) => day.entries),
+        10,
+    );
+
+    return (
+        <article
+            className="statistics-print hidden print:block"
+            data-testid="statistics-print-layout"
+        >
+            <header className="statistics-print-header">
+                <div>
+                    <h1>Helpdesk Reporter - Statistik</h1>
+                    <p>
+                        Auswertung {stats.weekly.label} ·{' '}
+                        {stats.weekly.rangeLabel}
+                    </p>
+                </div>
+                <p className="statistics-print-filter">
+                    {filterLabels.length > 0
+                        ? filterLabels.join(' · ')
+                        : 'Alle Einträge, keine Filter aktiv'}
+                </p>
+            </header>
+
+            <section
+                className="statistics-print-totals"
+                data-testid="statistics-print-totals"
+            >
+                <div>
+                    <span>Beratungen</span>
+                    <strong>{stats.totals.entries}</strong>
+                    <small>{stats.totals.visitors} Besucher:innen</small>
+                </div>
+                <div>
+                    <span>Gesamtzeit</span>
+                    <strong>{stats.totals.hours} h</strong>
+                    <small>{stats.totals.minutes} Minuten</small>
+                </div>
+                <div>
+                    <span>Aktive Tutor:innen</span>
+                    <strong>{stats.totals.activeTutors}</strong>
+                    <small>{stats.totals.semesters} Semester</small>
+                </div>
+                <div>
+                    <span>Online-Anteil</span>
+                    <strong>{stats.totals.onlinePercentage}%</strong>
+                    <small>
+                        {stats.totals.onlineEntries} online /{' '}
+                        {stats.totals.presenceEntries} präsent
+                    </small>
+                </div>
+            </section>
+
+            <section
+                className="statistics-print-section statistics-print-current-week"
+                data-testid="statistics-print-current-week"
+            >
+                <div className="statistics-print-section-heading">
+                    <h2>Aktuelle Wochenübersicht</h2>
+                    <strong>
+                        {stats.weekly.totalEntries}{' '}
+                        {stats.weekly.totalEntries === 1
+                            ? 'Beratung'
+                            : 'Beratungen'}
+                    </strong>
+                </div>
+                <div className="statistics-print-days">
+                    {stats.weekly.days.map((day) => (
+                        <div key={day.date}>
+                            <span>{day.label}</span>
+                            <strong>{day.entries}</strong>
+                            <small>{day.date.slice(5)}</small>
+                            <div className="statistics-print-bar">
+                                <span
+                                    style={{
+                                        width: `${percentage(day.entries, maxWeeklyEntries)}%`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {stats.weekly.semesterWeeks.length > 0 && (
+                <section className="statistics-print-section statistics-print-semester-weeks">
+                    <h2>Semesterwochen</h2>
+                    <div>
+                        {stats.weekly.semesterWeeks.map((semesterWeek) => (
+                            <p key={semesterWeek.start}>
+                                <span>{semesterWeek.label}</span>
+                                <small>{semesterWeek.rangeLabel}</small>
+                                <strong>{semesterWeek.entries}</strong>
+                            </p>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <div
+                className="statistics-print-breakdowns"
+                data-testid="statistics-print-breakdowns"
+            >
+                <PrintBreakdown
+                    title="Nach Fachbereich"
+                    items={stats.faculties}
+                />
+                <PrintBreakdown
+                    title="Nach Studiengang"
+                    items={stats.degrees}
+                />
+                <PrintBreakdown title="Nach Thema" items={stats.topics} />
+            </div>
+        </article>
+    );
+}
+
 export default function AdminStatisticsIndex({
     filters,
     week,
@@ -128,6 +304,7 @@ export default function AdminStatisticsIndex({
     const activeFilterCount = Object.values(filters).filter(
         (value) => value !== '',
     ).length;
+    const filterLabels = activeFilterLabels(filters, formOptions);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const filterForm = useForm<Filters>(filters);
     const maxWeeklyEntries = Math.max(
@@ -220,7 +397,13 @@ export default function AdminStatisticsIndex({
     return (
         <>
             <Head title="Statistik" />
-            <div className="flex flex-col gap-5 px-4 py-5 md:px-6 md:py-6">
+            <PrintStatistics
+                filters={filters}
+                week={week}
+                formOptions={formOptions}
+                stats={stats}
+            />
+            <div className="flex flex-col gap-5 px-4 py-5 md:px-6 md:py-6 print:hidden">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                         <h1 className="text-xl font-semibold tracking-tight">
@@ -263,24 +446,9 @@ export default function AdminStatisticsIndex({
                 </div>
 
                 {hasActiveFilters && (
-                    <div className="hidden text-sm text-muted-foreground print:block">
+                    <div className="text-sm text-muted-foreground">
                         <span className="font-medium">Aktive Filter:</span>{' '}
-                        {[
-                            filters.user &&
-                                `Tutor: ${formOptions.tutors.find((t) => t.value === filters.user)?.label ?? filters.user}`,
-                            filters.semester && `Semester: ${filters.semester}`,
-                            filters.degree && `Studiengang: ${filters.degree}`,
-                            filters.faculty &&
-                                `Fachbereich: ${filters.faculty}`,
-                            filters.topic &&
-                                `Thema: ${formOptions.topics.find((t) => t.value === filters.topic)?.label ?? filters.topic}`,
-                            filters.online === '1' && 'Modus: Online',
-                            filters.online === '0' && 'Modus: Präsenz',
-                            filters.from && `Von: ${filters.from}`,
-                            filters.until && `Bis: ${filters.until}`,
-                        ]
-                            .filter(Boolean)
-                            .join(' · ')}
+                        {filterLabels.join(' · ')}
                     </div>
                 )}
 
