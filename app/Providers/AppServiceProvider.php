@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Date::use(CarbonImmutable::class);
 
-        Gate::define('view-admin-attendances', fn (User $user): bool => $user->isAdmin);
+        Gate::define('view-admin-attendances', fn (User $user): bool => $user->isMod || $user->isAdmin);
         Gate::define('manage-admin-users', fn (User $user): bool => $user->isAdmin);
         Gate::define('manage-semesters', fn (User $user): bool => $user->isAdmin);
         Gate::define('manage-degrees', fn (User $user): bool => $user->isAdmin);

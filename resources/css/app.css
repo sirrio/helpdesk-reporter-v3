@@ -141,3 +141,39 @@
         @apply bg-background text-foreground;
     }
 }
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        background: white !important;
+        color: black !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    [data-sidebar='sidebar'],
+    [data-sidebar='rail'],
+    [data-slot='sidebar-trigger'],
+    header {
+        display: none !important;
+    }
+
+    [data-slot='sidebar-inset'] {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    [data-slot='card'] {
+        break-inside: avoid;
+        box-shadow: none !important;
+    }
+
+    button {
+        break-inside: avoid;
+    }
+}

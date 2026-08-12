@@ -25,15 +25,18 @@ it('shows the degree management page to admins', function () {
 
 it('allows admins to create degrees', function () {
     $admin = User::factory()->admin()->create();
+    $faculty = Faculty::factory()->create();
 
     $this->actingAs($admin)
         ->post(route('admin.degrees.store'), [
             'name' => 'Data Science',
+            'faculty_id' => $faculty->id,
         ])
         ->assertRedirect(route('admin.degrees.index'));
 
     $this->assertDatabaseHas('degrees', [
         'name' => 'Data Science',
+        'faculty_id' => $faculty->id,
     ]);
 });
 
@@ -41,8 +44,12 @@ it('updates degree labels and keeps attendance references in sync', function () 
     $admin = User::factory()->admin()->create();
     $tutor = User::factory()->create();
     $semester = Semester::factory()->create(['semester' => 'WS 2025/2026']);
-    $degree = Degree::factory()->create(['name' => 'Informatik']);
     $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
+    $newFaculty = Faculty::factory()->create(['name' => 'Informatik']);
+    $degree = Degree::factory()->create([
+        'name' => 'Informatik',
+        'faculty_id' => $faculty->id,
+    ]);
 
     Attendance::factory()
         ->for($tutor)
@@ -54,17 +61,20 @@ it('updates degree labels and keeps attendance references in sync', function () 
     $this->actingAs($admin)
         ->put(route('admin.degrees.update', $degree), [
             'name' => 'Wirtschaftsinformatik',
+            'faculty_id' => $newFaculty->id,
         ])
         ->assertRedirect(route('admin.degrees.index'));
 
     $this->assertDatabaseHas('degrees', [
         'id' => $degree->id,
         'name' => 'Wirtschaftsinformatik',
+        'faculty_id' => $newFaculty->id,
     ]);
 
     $this->assertDatabaseHas('attendances', [
         'user_id' => $tutor->id,
         'degree' => 'Wirtschaftsinformatik',
+        'faculty' => 'Informatik',
     ]);
 });
 

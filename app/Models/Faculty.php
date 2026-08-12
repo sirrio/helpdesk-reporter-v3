@@ -15,6 +15,11 @@ class Faculty extends Model
     /** @use HasFactory<FacultyFactory> */
     use HasFactory, SoftDeletes;
 
+    public function degrees(): HasMany
+    {
+        return $this->hasMany(Degree::class);
+    }
+
     /**
      * Get the attendances associated with the faculty name.
      */

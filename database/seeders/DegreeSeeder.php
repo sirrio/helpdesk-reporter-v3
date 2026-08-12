@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Degree;
+use App\Models\Faculty;
 use Illuminate\Database\Seeder;
 
 class DegreeSeeder extends Seeder
@@ -12,8 +13,15 @@ class DegreeSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach (['Informatik', 'Mathematik', 'Physik'] as $degree) {
-            Degree::query()->firstOrCreate(['name' => $degree]);
+        foreach ([
+            'Informatik' => 'Informatik',
+            'Mathematik' => 'Naturwissenschaften',
+            'Physik' => 'Ingenieurwissenschaften',
+        ] as $degree => $faculty) {
+            Degree::query()->updateOrCreate(
+                ['name' => $degree],
+                ['faculty_id' => Faculty::query()->where('name', $faculty)->firstOrFail()->id],
+            );
         }
     }
 }

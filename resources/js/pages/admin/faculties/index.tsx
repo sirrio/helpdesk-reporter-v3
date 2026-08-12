@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
 import { Archive, Building2, PencilLine, Plus, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import {
     destroy as destroyFaculty,
     index as adminFacultiesIndex,
@@ -54,7 +55,9 @@ const ALL = '__all__';
 
 export default function AdminFacultiesIndex({ faculties, filters }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [editingFaculty, setEditingFaculty] = useState<FacultyItem | null>(null);
+    const [editingFaculty, setEditingFaculty] = useState<FacultyItem | null>(
+        null,
+    );
     const filterForm = useForm<Filters>(filters);
     const createForm = useForm({
         name: '',
@@ -105,7 +108,8 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                             Fachbereiche
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Pflege die auswählbaren Fachbereiche für neue Helpdesk-Einsätze.
+                            Pflege die auswählbaren Fachbereiche für neue
+                            Helpdesk-Einsätze.
                         </p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -132,7 +136,9 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                             <SelectContent>
                                 <SelectItem value={ALL}>Alle</SelectItem>
                                 <SelectItem value="active">Aktiv</SelectItem>
-                                <SelectItem value="archived">Archiviert</SelectItem>
+                                <SelectItem value="archived">
+                                    Archiviert
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <Dialog
@@ -147,32 +153,50 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-lg">
                                 <DialogHeader>
-                                    <DialogTitle>Fachbereich anlegen</DialogTitle>
+                                    <DialogTitle>
+                                        Fachbereich anlegen
+                                    </DialogTitle>
                                     <DialogDescription>
-                                        Der Wert steht danach sofort im Eingabeformular zur Auswahl.
+                                        Der Wert steht danach sofort im
+                                        Eingabeformular zur Auswahl.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <form onSubmit={submitCreate} className="space-y-5">
+                                <form
+                                    onSubmit={submitCreate}
+                                    className="space-y-5"
+                                >
                                     <div className="grid gap-2">
-                                        <Label htmlFor="create-faculty">Bezeichnung</Label>
+                                        <Label htmlFor="create-faculty">
+                                            Bezeichnung
+                                        </Label>
                                         <Input
                                             id="create-faculty"
                                             value={createForm.data.name}
                                             onChange={(event) =>
-                                                createForm.setData('name', event.target.value)
+                                                createForm.setData(
+                                                    'name',
+                                                    event.target.value,
+                                                )
                                             }
                                             placeholder="Kulturwissenschaften"
                                         />
-                                        <InputError message={createForm.errors.name} />
+                                        <InputError
+                                            message={createForm.errors.name}
+                                        />
                                     </div>
                                     <div className="flex flex-wrap gap-3">
-                                        <Button type="submit" disabled={createForm.processing}>
+                                        <Button
+                                            type="submit"
+                                            disabled={createForm.processing}
+                                        >
                                             Fachbereich speichern
                                         </Button>
                                         <Button
                                             type="button"
                                             variant="outline"
-                                            onClick={() => setIsCreateDialogOpen(false)}
+                                            onClick={() =>
+                                                setIsCreateDialogOpen(false)
+                                            }
                                         >
                                             Abbrechen
                                         </Button>
@@ -190,14 +214,16 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                             <CardTitle>Fachbereiche</CardTitle>
                         </div>
                         <CardDescription>
-                            Aktive und archivierte Werte inklusive zugeordneter Einsätze.
+                            Aktive und archivierte Werte inklusive zugeordneter
+                            Einsätze.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {faculties.data.length === 0 ? (
                             <div className="rounded-xl border border-dashed px-6 py-10 text-center">
                                 <p className="text-sm font-medium">
-                                    Keine Fachbereiche für diese Auswahl gefunden.
+                                    Keine Fachbereiche für diese Auswahl
+                                    gefunden.
                                 </p>
                             </div>
                         ) : (
@@ -212,14 +238,26 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <div className="flex items-center gap-2 text-sm font-medium">
                                                         <Building2 className="size-4 text-muted-foreground" />
-                                                        <span>{faculty.name}</span>
+                                                        <span>
+                                                            {faculty.name}
+                                                        </span>
                                                     </div>
-                                                    <Badge variant={faculty.deletedAt ? 'outline' : 'secondary'}>
-                                                        {faculty.deletedAt ? 'Archiviert' : 'Aktiv'}
+                                                    <Badge
+                                                        variant={
+                                                            faculty.deletedAt
+                                                                ? 'outline'
+                                                                : 'secondary'
+                                                        }
+                                                    >
+                                                        {faculty.deletedAt
+                                                            ? 'Archiviert'
+                                                            : 'Aktiv'}
                                                     </Badge>
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {faculty.attendancesCount} Einsätze mit diesem Fachbereich
+                                                    {faculty.attendancesCount}{' '}
+                                                    Einsätze mit diesem
+                                                    Fachbereich
                                                 </p>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
@@ -228,7 +266,11 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                         <Button
                                                             type="button"
                                                             variant="outline"
-                                                            onClick={() => openEditDialog(faculty)}
+                                                            onClick={() =>
+                                                                openEditDialog(
+                                                                    faculty,
+                                                                )
+                                                            }
                                                         >
                                                             <PencilLine className="size-4" />
                                                             Bearbeiten
@@ -237,10 +279,15 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                             type="button"
                                                             variant="outline"
                                                             onClick={() =>
-                                                                router.visit(destroyFaculty(faculty.id), {
-                                                                    method: 'delete',
-                                                                    preserveScroll: true,
-                                                                })
+                                                                router.visit(
+                                                                    destroyFaculty(
+                                                                        faculty.id,
+                                                                    ),
+                                                                    {
+                                                                        method: 'delete',
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
                                                             }
                                                         >
                                                             <Archive className="size-4" />
@@ -253,10 +300,15 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                         type="button"
                                                         variant="outline"
                                                         onClick={() =>
-                                                            router.visit(restoreFaculty(faculty.id), {
-                                                                method: 'patch',
-                                                                preserveScroll: true,
-                                                            })
+                                                            router.visit(
+                                                                restoreFaculty(
+                                                                    faculty.id,
+                                                                ),
+                                                                {
+                                                                    method: 'patch',
+                                                                    preserveScroll: true,
+                                                                },
+                                                            )
                                                         }
                                                     >
                                                         <RotateCcw className="size-4" />
@@ -275,21 +327,35 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                     <Button
                                         key={`${link.label}-${index}`}
                                         type="button"
-                                        variant={link.active ? 'default' : 'outline'}
+                                        variant={
+                                            link.active ? 'default' : 'outline'
+                                        }
                                         disabled={link.url === null}
                                         asChild={link.url !== null}
                                     >
                                         {link.url ? (
                                             <Link href={link.url}>
                                                 {link.label
-                                                    .replace('&laquo; Previous', 'Zurück')
-                                                    .replace('Next &raquo;', 'Weiter')}
+                                                    .replace(
+                                                        '&laquo; Previous',
+                                                        'Zurück',
+                                                    )
+                                                    .replace(
+                                                        'Next &raquo;',
+                                                        'Weiter',
+                                                    )}
                                             </Link>
                                         ) : (
                                             <span>
                                                 {link.label
-                                                    .replace('&laquo; Previous', 'Zurück')
-                                                    .replace('Next &raquo;', 'Weiter')}
+                                                    .replace(
+                                                        '&laquo; Previous',
+                                                        'Zurück',
+                                                    )
+                                                    .replace(
+                                                        'Next &raquo;',
+                                                        'Weiter',
+                                                    )}
                                             </span>
                                         )}
                                     </Button>
@@ -308,7 +374,8 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                     <DialogHeader>
                         <DialogTitle>Fachbereich bearbeiten</DialogTitle>
                         <DialogDescription>
-                            Änderungen an der Bezeichnung werden in bestehenden Einsätzen mitgeführt.
+                            Änderungen an der Bezeichnung werden in bestehenden
+                            Einsätzen mitgeführt.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submitUpdate} className="space-y-5">
@@ -317,12 +384,17 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                             <Input
                                 id="edit-faculty"
                                 value={editForm.data.name}
-                                onChange={(event) => editForm.setData('name', event.target.value)}
+                                onChange={(event) =>
+                                    editForm.setData('name', event.target.value)
+                                }
                             />
                             <InputError message={editForm.errors.name} />
                         </div>
                         <div className="flex flex-wrap gap-3">
-                            <Button type="submit" disabled={editForm.processing}>
+                            <Button
+                                type="submit"
+                                disabled={editForm.processing}
+                            >
                                 Änderungen speichern
                             </Button>
                             <Button

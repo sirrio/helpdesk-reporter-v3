@@ -20,7 +20,11 @@ it('shows aggregated statistics to admins', function () {
         'name' => 'Tutor Beta',
         'email' => 'beta@example.com',
     ]);
-    $semester = Semester::factory()->create(['semester' => 'WS 2025/2026']);
+    $semester = Semester::factory()->create([
+        'semester' => 'WS 2025/2026',
+        'start' => '2025-10-01',
+        'end' => '2026-03-31',
+    ]);
     $degree = Degree::factory()->create(['name' => 'Informatik']);
     $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
     $baseTopics = array_fill_keys(array_keys(Attendance::topicOptions()), false);
@@ -37,6 +41,7 @@ it('shows aggregated statistics to admins', function () {
             'endTime' => '11:30:00',
             'programming' => true,
             'online' => true,
+            'visitors' => 3,
         ]);
 
     Attendance::factory()
@@ -51,6 +56,7 @@ it('shows aggregated statistics to admins', function () {
             'endTime' => '13:00:00',
             'physics' => true,
             'online' => false,
+            'visitors' => 2,
         ]);
 
     $this->actingAs($admin)
@@ -60,6 +66,7 @@ it('shows aggregated statistics to admins', function () {
             ->component('admin/statistics/index')
             ->where('week', '2025-11-10')
             ->where('stats.totals.entries', 2)
+            ->where('stats.totals.visitors', 5)
             ->where('stats.totals.minutes', 150)
             ->where('stats.totals.hours', 2.5)
             ->where('stats.totals.activeTutors', 2)
@@ -69,6 +76,8 @@ it('shows aggregated statistics to admins', function () {
             ->where('stats.weekly.totalEntries', 2)
             ->where('stats.weekly.days.2.entries', 1)
             ->where('stats.weekly.days.3.entries', 1)
+            ->where('stats.weekly.semesterWeeks.0.label', 'KW 14')
+            ->where('stats.weekly.semesterWeeks.26.label', 'KW 40')
             ->where('stats.faculties.0.label', 'Naturwissenschaften')
             ->where('stats.degrees.0.label', 'Informatik')
             ->where('stats.topics.0.label', 'Programmierung')
@@ -131,4 +140,12 @@ it('forbids non admins from opening the statistics page', function () {
     $this->actingAs($user)
         ->get(route('admin.statistics.index'))
         ->assertForbidden();
+});
+
+it('allows moderators to open the statistics page', function () {
+    $moderator = User::factory()->create(['isMod' => true]);
+
+    $this->actingAs($moderator)
+        ->get(route('admin.statistics.index'))
+        ->assertOk();
 });

@@ -41,7 +41,7 @@ class AttendanceSeeder extends Seeder
                         'startTime' => '09:00:00',
                         'endTime' => '11:00:00',
                         'degree' => 'Informatik',
-                        'faculty' => 'Naturwissenschaften',
+                        'faculty' => 'Informatik',
                         'online' => true,
                         'topics' => ['programming', 'mathBasic'],
                     ],

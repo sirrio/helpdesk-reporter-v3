@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Database\Factories\AttendanceFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'chemistry',
     'organization',
     'online',
+    'visitors',
 ])]
 class Attendance extends Model
 {
@@ -37,10 +38,10 @@ class Attendance extends Model
      * @var array<string, string>
      */
     public const TOPIC_OPTIONS = [
-        'mathBasic' => 'Mathe Grundlagen',
-        'mathFractions' => 'Mathe Bruchrechnung',
-        'mathLow' => 'Mathe leicht',
-        'mathHigh' => 'Mathe anspruchsvoll',
+        'mathBasic' => 'Mathe Schulwissen',
+        'mathFractions' => 'Bruchrechnung',
+        'mathLow' => 'Mathe Semester 1 und 2',
+        'mathHigh' => 'Mathe Semester 3+',
         'programming' => 'Programmierung',
         'physics' => 'Physik',
         'chemistry' => 'Chemie',
@@ -158,6 +159,7 @@ class Attendance extends Model
             'chemistry' => 'boolean',
             'organization' => 'boolean',
             'online' => 'boolean',
+            'visitors' => 'integer',
             'deleted_at' => 'datetime',
         ];
     }

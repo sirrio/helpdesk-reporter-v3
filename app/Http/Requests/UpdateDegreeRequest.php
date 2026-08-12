@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Degree;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class UpdateDegreeRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -33,6 +34,7 @@ class UpdateDegreeRequest extends FormRequest
                 'max:255',
                 Rule::unique('degrees', 'name')->ignore($degree),
             ],
+            'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')->whereNull('deleted_at')],
         ];
     }
 }

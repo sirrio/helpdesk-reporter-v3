@@ -7,7 +7,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 import {
     SidebarGroup,
     SidebarGroupLabel,
@@ -20,6 +19,7 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { cn } from '@/lib/utils';
 import type { NavItem } from '@/types';
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
@@ -119,7 +119,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                                 asChild
                                                 isActive={child.isActive}
                                             >
-                                                <Link href={child.href} prefetch>
+                                                <Link
+                                                    href={child.href}
+                                                    prefetch
+                                                >
                                                     <span>{child.title}</span>
                                                 </Link>
                                             </SidebarMenuSubButton>
