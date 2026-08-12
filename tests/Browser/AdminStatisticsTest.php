@@ -19,6 +19,16 @@ it('shows the statistics page with export button', function () {
         ->assertNoJavaScriptErrors();
 });
 
+it('renders a dedicated compact print overview', function () {
+    $page = visit('/admin/statistics');
+
+    $page->assertPresent('[data-testid="statistics-print-layout"]')
+        ->assertPresent('[data-testid="statistics-print-totals"]')
+        ->assertPresent('[data-testid="statistics-print-current-week"]')
+        ->assertPresent('[data-testid="statistics-print-breakdowns"]')
+        ->assertNoJavaScriptErrors();
+});
+
 it('clears a single applied statistics filter', function () {
     $semester = Semester::factory()->create(['semester' => 'WS 2025/2026']);
     $page = visit('/admin/statistics?semester='.urlencode($semester->semester));
