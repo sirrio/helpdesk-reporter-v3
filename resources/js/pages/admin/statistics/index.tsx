@@ -1,5 +1,4 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
 import {
     BarChart3,
     ChevronDown,
@@ -14,10 +13,11 @@ import {
     School,
     Users,
 } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { statistics as adminStatisticsIndex } from '@/actions/App/Http/Controllers/AttendanceController';
+import { LocalizedDateInput } from '@/components/localized-date-input';
 import { Badge } from '@/components/ui/badge';
-import { FILTER_ALL } from '@/lib/constants';
-import { cleanFilters } from '@/lib/filters';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -27,7 +27,6 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -36,6 +35,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { FILTER_ALL } from '@/lib/constants';
+import { cleanFilters } from '@/lib/filters';
 
 type SelectOption = { value: string; label: string };
 type TutorOption = SelectOption & { email: string };
@@ -61,6 +62,13 @@ type WeeklyDay = {
     entries: number;
 };
 
+type SemesterWeek = {
+    start: string;
+    label: string;
+    rangeLabel: string;
+    entries: number;
+};
+
 type Props = {
     filters: Filters;
     week: string;
@@ -70,10 +78,12 @@ type Props = {
         faculties: string[];
         topics: SelectOption[];
         tutors: TutorOption[];
+        degreeFaculties: Record<string, string | null>;
     };
     stats: {
         totals: {
             entries: number;
+            visitors: number;
             minutes: number;
             hours: number;
             activeTutors: number;
@@ -90,6 +100,7 @@ type Props = {
             rangeLabel: string;
             totalEntries: number;
             days: WeeklyDay[];
+            semesterWeeks: SemesterWeek[];
         };
         faculties: BreakdownItem[];
         degrees: BreakdownItem[];
@@ -98,7 +109,7 @@ type Props = {
 };
 
 function percentage(value: number, max: number): number {
-    if (max <= 0) {
+    if (value <= 0 || max <= 0) {
         return 0;
     }
 
@@ -111,16 +122,40 @@ export default function AdminStatisticsIndex({
     formOptions,
     stats,
 }: Props) {
-    const hasActiveFilters = Object.values(filters).some((value) => value !== '');
-    const activeFilterCount = Object.values(filters).filter((value) => value !== '').length;
+    const hasActiveFilters = Object.values(filters).some(
+        (value) => value !== '',
+    );
+    const activeFilterCount = Object.values(filters).filter(
+        (value) => value !== '',
+    ).length;
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const filterForm = useForm<Filters>(filters);
-    const maxWeeklyEntries = Math.max(...stats.weekly.days.map((day) => day.entries), 0);
-    const maxFacultyEntries = Math.max(...stats.faculties.map((faculty) => faculty.entries), 0);
-    const maxDegreeEntries = Math.max(...stats.degrees.map((degree) => degree.entries), 0);
-    const maxTopicEntries = Math.max(...stats.topics.map((topic) => topic.entries), 0);
+    const maxWeeklyEntries = Math.max(
+        ...stats.weekly.days.map((day) => day.entries),
+        0,
+    );
+    const maxSemesterWeekEntries = Math.max(
+        ...stats.weekly.semesterWeeks.map(
+            (semesterWeek) => semesterWeek.entries,
+        ),
+        10,
+    );
+    const maxFacultyEntries = Math.max(
+        ...stats.faculties.map((faculty) => faculty.entries),
+        0,
+    );
+    const maxDegreeEntries = Math.max(
+        ...stats.degrees.map((degree) => degree.entries),
+        0,
+    );
+    const maxTopicEntries = Math.max(
+        ...stats.topics.map((topic) => topic.entries),
+        0,
+    );
 
-    function statisticsQuery(overrides: Partial<Filters> & { week?: string } = {}): Record<string, string> {
+    function statisticsQuery(
+        overrides: Partial<Filters> & { week?: string } = {},
+    ): Record<string, string> {
         return {
             ...cleanFilters(filters),
             week,
@@ -132,11 +167,14 @@ export default function AdminStatisticsIndex({
 
     function applyFilters(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        router.visit(adminStatisticsIndex({ query: statisticsQuery(filterForm.data) }), {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.visit(
+            adminStatisticsIndex({ query: statisticsQuery(filterForm.data) }),
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     function resetFilters(): void {
@@ -160,12 +198,29 @@ export default function AdminStatisticsIndex({
         });
     }
 
-    function changeWeek(targetWeek: string): void {
-        router.visit(adminStatisticsIndex({ query: statisticsQuery({ week: targetWeek }) }), {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
+    function selectFilterDegree(degree: string): void {
+        const selectedDegree = degree === FILTER_ALL ? '' : degree;
+
+        filterForm.setData({
+            ...filterForm.data,
+            degree: selectedDegree,
+            faculty:
+                formOptions.degreeFaculties[selectedDegree] ??
+                filterForm.data.faculty,
         });
+    }
+
+    function changeWeek(targetWeek: string): void {
+        router.visit(
+            adminStatisticsIndex({
+                query: statisticsQuery({ week: targetWeek }),
+            }),
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     return (
@@ -178,7 +233,8 @@ export default function AdminStatisticsIndex({
                             Statistik
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Verdichte alle Helpdesk-Einsätze zu Wochen-, Fachbereichs-, Studiengang- und Themenstatistiken.
+                            Verdichte alle Helpdesk-Einsätze zu Wochen-,
+                            Fachbereichs-, Studiengang- und Themenstatistiken.
                         </p>
                     </div>
                     <div className="flex gap-2 print:hidden">
@@ -200,7 +256,9 @@ export default function AdminStatisticsIndex({
                                 <Filter className="size-4" />
                                 Filter
                                 {activeFilterCount > 0 && (
-                                    <Badge variant="secondary">{activeFilterCount}</Badge>
+                                    <Badge variant="secondary">
+                                        {activeFilterCount}
+                                    </Badge>
                                 )}
                             </span>
                             <ChevronDown
@@ -211,14 +269,17 @@ export default function AdminStatisticsIndex({
                 </div>
 
                 {hasActiveFilters && (
-                    <div className="hidden print:block text-sm text-muted-foreground">
+                    <div className="hidden text-sm text-muted-foreground print:block">
                         <span className="font-medium">Aktive Filter:</span>{' '}
                         {[
-                            filters.user && `Tutor: ${formOptions.tutors.find((t) => t.value === filters.user)?.label ?? filters.user}`,
+                            filters.user &&
+                                `Tutor: ${formOptions.tutors.find((t) => t.value === filters.user)?.label ?? filters.user}`,
                             filters.semester && `Semester: ${filters.semester}`,
                             filters.degree && `Studiengang: ${filters.degree}`,
-                            filters.faculty && `Fachbereich: ${filters.faculty}`,
-                            filters.topic && `Thema: ${formOptions.topics.find((t) => t.value === filters.topic)?.label ?? filters.topic}`,
+                            filters.faculty &&
+                                `Fachbereich: ${filters.faculty}`,
+                            filters.topic &&
+                                `Thema: ${formOptions.topics.find((t) => t.value === filters.topic)?.label ?? filters.topic}`,
                             filters.online === '1' && 'Modus: Online',
                             filters.online === '0' && 'Modus: Präsenz',
                             filters.from && `Von: ${filters.from}`,
@@ -229,15 +290,25 @@ export default function AdminStatisticsIndex({
                     </div>
                 )}
 
-                <Collapsible open={isFilterOpen} onOpenChange={setIsFilterOpen} className="print:hidden">
+                <Collapsible
+                    open={isFilterOpen}
+                    onOpenChange={setIsFilterOpen}
+                    className="print:hidden"
+                >
                     <CollapsibleContent>
                         <div className="rounded-xl border bg-muted/20 p-4 md:p-5">
                             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <p className="text-sm text-muted-foreground">
-                                    Filtere die Statistik nach Tutor, Zeitraum, Semester oder Themenbereich.
+                                    Filtere die Statistik nach Tutor, Zeitraum,
+                                    Semester oder Themenbereich.
                                 </p>
                                 {activeFilterCount > 0 && (
-                                    <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={resetFilters}
+                                    >
                                         Zurücksetzen
                                     </Button>
                                 )}
@@ -248,149 +319,241 @@ export default function AdminStatisticsIndex({
                                     <div className="grid gap-2">
                                         <Label>Tutor</Label>
                                         <Select
-                                            value={filterForm.data.user || FILTER_ALL}
+                                            value={
+                                                filterForm.data.user ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
-                                                filterForm.setData('user', value === FILTER_ALL ? '' : value)
+                                                filterForm.setData(
+                                                    'user',
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
+                                                )
                                             }
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Tutor:innen" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value={FILTER_ALL}>Alle Tutor:innen</SelectItem>
-                                                {formOptions.tutors.map((tutor) => (
-                                                    <SelectItem key={tutor.value} value={tutor.value}>
-                                                        {tutor.label}
-                                                    </SelectItem>
-                                                ))}
+                                                <SelectItem value={FILTER_ALL}>
+                                                    Alle Tutor:innen
+                                                </SelectItem>
+                                                {formOptions.tutors.map(
+                                                    (tutor) => (
+                                                        <SelectItem
+                                                            key={tutor.value}
+                                                            value={tutor.value}
+                                                        >
+                                                            {tutor.label}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Semester</Label>
                                         <Select
-                                            value={filterForm.data.semester || FILTER_ALL}
+                                            value={
+                                                filterForm.data.semester ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
-                                                filterForm.setData('semester', value === FILTER_ALL ? '' : value)
+                                                filterForm.setData(
+                                                    'semester',
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
+                                                )
                                             }
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Semester" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value={FILTER_ALL}>Alle Semester</SelectItem>
-                                                {formOptions.semesters.map((semester) => (
-                                                    <SelectItem key={semester} value={semester}>
-                                                        {semester}
-                                                    </SelectItem>
-                                                ))}
+                                                <SelectItem value={FILTER_ALL}>
+                                                    Alle Semester
+                                                </SelectItem>
+                                                {formOptions.semesters.map(
+                                                    (semester) => (
+                                                        <SelectItem
+                                                            key={semester}
+                                                            value={semester}
+                                                        >
+                                                            {semester}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Studiengang</Label>
                                         <Select
-                                            value={filterForm.data.degree || FILTER_ALL}
-                                            onValueChange={(value) =>
-                                                filterForm.setData('degree', value === FILTER_ALL ? '' : value)
+                                            value={
+                                                filterForm.data.degree ||
+                                                FILTER_ALL
                                             }
+                                            onValueChange={selectFilterDegree}
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Studiengänge" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value={FILTER_ALL}>Alle Studiengänge</SelectItem>
-                                                {formOptions.degrees.map((degree) => (
-                                                    <SelectItem key={degree} value={degree}>
-                                                        {degree}
-                                                    </SelectItem>
-                                                ))}
+                                                <SelectItem value={FILTER_ALL}>
+                                                    Alle Studiengänge
+                                                </SelectItem>
+                                                {formOptions.degrees.map(
+                                                    (degree) => (
+                                                        <SelectItem
+                                                            key={degree}
+                                                            value={degree}
+                                                        >
+                                                            {degree}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Fachbereich</Label>
                                         <Select
-                                            value={filterForm.data.faculty || FILTER_ALL}
+                                            value={
+                                                filterForm.data.faculty ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
-                                                filterForm.setData('faculty', value === FILTER_ALL ? '' : value)
+                                                filterForm.setData(
+                                                    'faculty',
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
+                                                )
                                             }
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Fachbereiche" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value={FILTER_ALL}>Alle Fachbereiche</SelectItem>
-                                                {formOptions.faculties.map((faculty) => (
-                                                    <SelectItem key={faculty} value={faculty}>
-                                                        {faculty}
-                                                    </SelectItem>
-                                                ))}
+                                                <SelectItem value={FILTER_ALL}>
+                                                    Alle Fachbereiche
+                                                </SelectItem>
+                                                {formOptions.faculties.map(
+                                                    (faculty) => (
+                                                        <SelectItem
+                                                            key={faculty}
+                                                            value={faculty}
+                                                        >
+                                                            {faculty}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Thema</Label>
                                         <Select
-                                            value={filterForm.data.topic || FILTER_ALL}
+                                            value={
+                                                filterForm.data.topic ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
-                                                filterForm.setData('topic', value === FILTER_ALL ? '' : value)
+                                                filterForm.setData(
+                                                    'topic',
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
+                                                )
                                             }
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Themen" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value={FILTER_ALL}>Alle Themen</SelectItem>
-                                                {formOptions.topics.map((topic) => (
-                                                    <SelectItem key={topic.value} value={topic.value}>
-                                                        {topic.label}
-                                                    </SelectItem>
-                                                ))}
+                                                <SelectItem value={FILTER_ALL}>
+                                                    Alle Themen
+                                                </SelectItem>
+                                                {formOptions.topics.map(
+                                                    (topic) => (
+                                                        <SelectItem
+                                                            key={topic.value}
+                                                            value={topic.value}
+                                                        >
+                                                            {topic.label}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Modus</Label>
                                         <Select
-                                            value={filterForm.data.online || FILTER_ALL}
+                                            value={
+                                                filterForm.data.online ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
-                                                filterForm.setData('online', value === FILTER_ALL ? '' : value)
+                                                filterForm.setData(
+                                                    'online',
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
+                                                )
                                             }
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Modi" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value={FILTER_ALL}>Alle Modi</SelectItem>
-                                                <SelectItem value="0">Präsenz</SelectItem>
-                                                <SelectItem value="1">Online</SelectItem>
+                                                <SelectItem value={FILTER_ALL}>
+                                                    Alle Modi
+                                                </SelectItem>
+                                                <SelectItem value="0">
+                                                    Präsenz
+                                                </SelectItem>
+                                                <SelectItem value="1">
+                                                    Online
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-4 md:grid-cols-2 xl:col-span-2">
                                         <div className="grid gap-2">
                                             <Label htmlFor="from">Von</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="from"
-                                                type="date"
                                                 value={filterForm.data.from}
-                                                onChange={(event) => filterForm.setData('from', event.target.value)}
+                                                onChange={(value) =>
+                                                    filterForm.setData(
+                                                        'from',
+                                                        value,
+                                                    )
+                                                }
                                             />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="until">Bis</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="until"
-                                                type="date"
                                                 value={filterForm.data.until}
-                                                onChange={(event) => filterForm.setData('until', event.target.value)}
+                                                onChange={(value) =>
+                                                    filterForm.setData(
+                                                        'until',
+                                                        value,
+                                                    )
+                                                }
                                             />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-3">
-                                    <Button type="submit">Filter anwenden</Button>
+                                    <Button type="submit">
+                                        Filter anwenden
+                                    </Button>
                                 </div>
                             </form>
                         </div>
@@ -400,42 +563,58 @@ export default function AdminStatisticsIndex({
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardDescription>Einsätze</CardDescription>
-                            <CardTitle className="text-3xl">{stats.totals.entries}</CardTitle>
+                            <CardDescription>Beratungen</CardDescription>
+                            <CardTitle className="text-3xl">
+                                {stats.totals.entries}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="text-sm text-muted-foreground">
-                            Erfasste Helpdesk-Einsätze im aktuellen Filter.
+                            {stats.totals.visitors} Besucher:innen im aktuellen
+                            Filter.
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="pb-3">
                             <CardDescription>Stunden</CardDescription>
-                            <CardTitle className="text-3xl">{stats.totals.hours}</CardTitle>
+                            <CardTitle className="text-3xl">
+                                {stats.totals.hours}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Clock3 className="size-4" />
-                            <span>{stats.totals.minutes} Minuten Gesamtzeit.</span>
+                            <span>
+                                {stats.totals.minutes} Minuten Gesamtzeit.
+                            </span>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardDescription>Aktive Tutor:innen</CardDescription>
-                            <CardTitle className="text-3xl">{stats.totals.activeTutors}</CardTitle>
+                            <CardDescription>
+                                Aktive Tutor:innen
+                            </CardDescription>
+                            <CardTitle className="text-3xl">
+                                {stats.totals.activeTutors}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="size-4" />
-                            <span>{stats.totals.semesters} Semester im Filter.</span>
+                            <span>
+                                {stats.totals.semesters} Semester im Filter.
+                            </span>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="pb-3">
                             <CardDescription>Online-Anteil</CardDescription>
-                            <CardTitle className="text-3xl">{stats.totals.onlinePercentage}%</CardTitle>
+                            <CardTitle className="text-3xl">
+                                {stats.totals.onlinePercentage}%
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
                             <MonitorSmartphone className="size-4" />
                             <span>
-                                {stats.totals.onlineEntries} online, {stats.totals.presenceEntries} präsent.
+                                {stats.totals.onlineEntries} online,{' '}
+                                {stats.totals.presenceEntries} präsent.
                             </span>
                         </CardContent>
                     </Card>
@@ -450,7 +629,7 @@ export default function AdminStatisticsIndex({
                                     <CardTitle>Wochenübersicht</CardTitle>
                                 </div>
                                 <CardDescription>
-                                    Anzahl der Teilnahmen pro Woche.
+                                    Anzahl der Beratungen pro Woche.
                                 </CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
@@ -459,20 +638,28 @@ export default function AdminStatisticsIndex({
                                     variant="outline"
                                     size="icon"
                                     className="print:hidden"
-                                    onClick={() => changeWeek(stats.weekly.previous)}
+                                    onClick={() =>
+                                        changeWeek(stats.weekly.previous)
+                                    }
                                 >
                                     <ChevronLeft className="size-4" />
                                 </Button>
                                 <div className="min-w-44 rounded-lg border px-3 py-2 text-center">
-                                    <p className="text-sm font-medium">{stats.weekly.label}</p>
-                                    <p className="text-xs text-muted-foreground">{stats.weekly.rangeLabel}</p>
+                                    <p className="text-sm font-medium">
+                                        {stats.weekly.label}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {stats.weekly.rangeLabel}
+                                    </p>
                                 </div>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="icon"
                                     className="print:hidden"
-                                    onClick={() => changeWeek(stats.weekly.next)}
+                                    onClick={() =>
+                                        changeWeek(stats.weekly.next)
+                                    }
                                 >
                                     <ChevronRight className="size-4" />
                                 </Button>
@@ -482,30 +669,95 @@ export default function AdminStatisticsIndex({
                     <CardContent className="space-y-4">
                         <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="secondary">
-                                {stats.weekly.totalEntries} Teilnahmen in dieser Woche
+                                {stats.weekly.totalEntries}{' '}
+                                {stats.weekly.totalEntries === 1
+                                    ? 'Beratung'
+                                    : 'Beratungen'}{' '}
+                                in dieser Woche
                             </Badge>
                         </div>
                         <div className="grid gap-3 md:grid-cols-7">
                             {stats.weekly.days.map((day) => (
-                                <div key={day.date} className="rounded-xl border bg-muted/20 p-4">
+                                <div
+                                    key={day.date}
+                                    className="rounded-xl border bg-muted/20 p-4"
+                                >
                                     <div className="mb-3 flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-medium">{day.label}</p>
-                                            <p className="text-xs text-muted-foreground">{day.date}</p>
+                                            <p className="text-sm font-medium">
+                                                {day.label}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {day.date}
+                                            </p>
                                         </div>
-                                        <span className="text-lg font-semibold">{day.entries}</span>
+                                        <span className="text-lg font-semibold">
+                                            {day.entries}
+                                        </span>
                                     </div>
                                     <div className="h-2 rounded-full bg-border">
                                         <div
                                             className="h-2 rounded-full bg-foreground/80"
                                             style={{
-                                                width: `${percentage(day.entries, maxWeeklyEntries)}%`,
+                                                width: `${percentage(day.entries, Math.max(maxWeeklyEntries, 10))}%`,
                                             }}
                                         />
                                     </div>
                                 </div>
                             ))}
                         </div>
+                        {stats.weekly.semesterWeeks.length > 0 && (
+                            <div className="space-y-3 border-t pt-4">
+                                <div>
+                                    <p className="text-sm font-medium">
+                                        Alle bisherigen Semesterwochen
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Neueste Woche zuerst, einschließlich
+                                        Wochen ohne Beratungen.
+                                    </p>
+                                </div>
+                                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                    {stats.weekly.semesterWeeks.map(
+                                        (semesterWeek) => (
+                                            <button
+                                                key={semesterWeek.start}
+                                                type="button"
+                                                className="rounded-lg border p-3 text-left transition-colors hover:bg-muted/40 print:break-inside-avoid"
+                                                onClick={() =>
+                                                    changeWeek(
+                                                        semesterWeek.start,
+                                                    )
+                                                }
+                                            >
+                                                <div className="mb-2 flex items-center justify-between gap-3">
+                                                    <span className="text-sm font-medium">
+                                                        {semesterWeek.label}
+                                                    </span>
+                                                    <span className="text-sm font-semibold">
+                                                        {semesterWeek.entries}
+                                                    </span>
+                                                </div>
+                                                <p className="mb-2 text-xs text-muted-foreground">
+                                                    {semesterWeek.rangeLabel}
+                                                </p>
+                                                <div className="h-2 rounded-full bg-border">
+                                                    <div
+                                                        className="h-2 rounded-full bg-foreground/80"
+                                                        style={{
+                                                            width: `${percentage(
+                                                                semesterWeek.entries,
+                                                                maxSemesterWeekEntries,
+                                                            )}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </button>
+                                        ),
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -514,23 +766,31 @@ export default function AdminStatisticsIndex({
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <Layers3 className="size-4 text-muted-foreground" />
-                                <CardTitle>Verteilung Fachbereiche</CardTitle>
+                                <CardTitle>
+                                    Beratungen nach Fachbereich
+                                </CardTitle>
                             </div>
                             <CardDescription>
-                                Teilnahmen nach Fakultät.
+                                Beratungen nach Fachbereich.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {stats.faculties.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                    Keine Fachbereiche für diese Auswahl vorhanden.
+                                    Keine Fachbereiche für diese Auswahl
+                                    vorhanden.
                                 </p>
                             ) : (
                                 stats.faculties.map((faculty) => (
-                                    <div key={faculty.label} className="space-y-2">
+                                    <div
+                                        key={faculty.label}
+                                        className="space-y-2"
+                                    >
                                         <div className="flex items-center justify-between text-sm">
                                             <span>{faculty.label}</span>
-                                            <span className="font-medium">{faculty.entries}</span>
+                                            <span className="font-medium">
+                                                {faculty.entries}
+                                            </span>
                                         </div>
                                         <div className="h-2 rounded-full bg-border">
                                             <div
@@ -550,23 +810,31 @@ export default function AdminStatisticsIndex({
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <GraduationCap className="size-4 text-muted-foreground" />
-                                <CardTitle>Verteilung Studiengänge</CardTitle>
+                                <CardTitle>
+                                    Beratungen nach Studiengang
+                                </CardTitle>
                             </div>
                             <CardDescription>
-                                Teilnahmen nach Studiengang.
+                                Beratungen nach Studiengang.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {stats.degrees.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                    Keine Studiengänge für diese Auswahl vorhanden.
+                                    Keine Studiengänge für diese Auswahl
+                                    vorhanden.
                                 </p>
                             ) : (
                                 stats.degrees.map((degree) => (
-                                    <div key={degree.label} className="space-y-2">
+                                    <div
+                                        key={degree.label}
+                                        className="space-y-2"
+                                    >
                                         <div className="flex items-center justify-between text-sm">
                                             <span>{degree.label}</span>
-                                            <span className="font-medium">{degree.entries}</span>
+                                            <span className="font-medium">
+                                                {degree.entries}
+                                            </span>
                                         </div>
                                         <div className="h-2 rounded-full bg-border">
                                             <div
@@ -586,10 +854,10 @@ export default function AdminStatisticsIndex({
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <School className="size-4 text-muted-foreground" />
-                                <CardTitle>Verteilung Themen</CardTitle>
+                                <CardTitle>Beratungen nach Thema</CardTitle>
                             </div>
                             <CardDescription>
-                                Teilnahmen nach Thema.
+                                Beratungen nach Thema.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -599,10 +867,15 @@ export default function AdminStatisticsIndex({
                                 </p>
                             ) : (
                                 stats.topics.map((topic) => (
-                                    <div key={topic.label} className="space-y-2">
+                                    <div
+                                        key={topic.label}
+                                        className="space-y-2"
+                                    >
                                         <div className="flex items-center justify-between text-sm">
                                             <span>{topic.label}</span>
-                                            <span className="font-medium">{topic.entries}</span>
+                                            <span className="font-medium">
+                                                {topic.entries}
+                                            </span>
                                         </div>
                                         <div className="h-2 rounded-full bg-border">
                                             <div

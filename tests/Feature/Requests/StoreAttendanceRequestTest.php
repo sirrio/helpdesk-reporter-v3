@@ -19,13 +19,21 @@ function validAttendancePayload(array $overrides = []): array
         'faculty' => 'Naturwissenschaften',
         'topics' => ['programming'],
         'online' => false,
+        'visitors' => 3,
     ], $overrides);
 }
 
 beforeEach(function () {
-    Semester::factory()->create(['semester' => 'WS 2025/2026']);
-    Degree::factory()->create(['name' => 'Informatik']);
-    Faculty::factory()->create(['name' => 'Naturwissenschaften']);
+    Semester::factory()->create([
+        'semester' => 'WS 2025/2026',
+        'start' => '2025-10-01',
+        'end' => '2026-04-30',
+    ]);
+    $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
+    Degree::factory()->create([
+        'name' => 'Informatik',
+        'faculty_id' => $faculty->id,
+    ]);
     $this->user = User::factory()->create();
 });
 
@@ -96,6 +104,84 @@ it('rejects an empty topics array', function () {
     $response->assertSessionHasErrors('topics');
 });
 
+it('rejects dates outside the semester and in the future', function () {
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'date' => '2025-09-30',
+        ]))
+        ->assertSessionHasErrors('date');
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'date' => now()->addDay()->toDateString(),
+        ]))
+        ->assertSessionHasErrors('date');
+});
+
+it('rejects a faculty that is not assigned to the degree', function () {
+    Faculty::factory()->create(['name' => 'Falscher Fachbereich']);
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'faculty' => 'Falscher Fachbereich',
+        ]))
+        ->assertSessionHasErrors('faculty');
+});
+
+it('rejects archived form options', function (string $field, string $modelClass, array $attributes, string $value) {
+    $model = $modelClass::factory()->create($attributes);
+    $model->delete();
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            $field => $value,
+        ]))
+        ->assertSessionHasErrors($field);
+})->with([
+    'semester' => [
+        'semester',
+        Semester::class,
+        [
+            'semester' => 'Archiviertes Semester',
+            'start' => '2025-01-01',
+            'end' => '2025-06-30',
+        ],
+        'Archiviertes Semester',
+    ],
+    'degree' => [
+        'degree',
+        Degree::class,
+        ['name' => 'Archivierter Studiengang'],
+        'Archivierter Studiengang',
+    ],
+    'faculty' => [
+        'faculty',
+        Faculty::class,
+        ['name' => 'Archivierter Fachbereich'],
+        'Archivierter Fachbereich',
+    ],
+]);
+
+it('rejects duplicate time slots for the same tutor', function () {
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload())
+        ->assertRedirect();
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload())
+        ->assertSessionHasErrors('startTime');
+
+    expect($this->user->attendances()->count())->toBe(1);
+});
+
+it('requires a positive visitor count', function () {
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'visitors' => 0,
+        ]))
+        ->assertSessionHasErrors('visitors');
+});
+
 it('accepts a valid payload', function () {
     $response = $this->actingAs($this->user)->post(route('attendances.store'), validAttendancePayload());
 
@@ -104,5 +190,6 @@ it('accepts a valid payload', function () {
         'user_id' => $this->user->id,
         'semester' => 'WS 2025/2026',
         'online' => false,
+        'visitors' => 3,
     ]);
 });

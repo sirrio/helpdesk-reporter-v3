@@ -1,20 +1,26 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
 import {
     CalendarDays,
     ChevronDown,
-    ClipboardList,
     Clock3,
     Filter,
     GraduationCap,
     Mail,
     MonitorSmartphone,
+    PencilLine,
     School,
     Shield,
     Users,
 } from 'lucide-react';
-import { adminIndex as adminAttendancesIndex } from '@/actions/App/Http/Controllers/AttendanceController';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import AttendanceController, {
+    adminIndex as adminAttendancesIndex,
+} from '@/actions/App/Http/Controllers/AttendanceController';
+import InputError from '@/components/input-error';
+import { LocalizedDateInput } from '@/components/localized-date-input';
 import { PaginationLinks } from '@/components/pagination-links';
+import { TimeInput } from '@/components/time-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,10 +30,15 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import {
-    Collapsible,
-    CollapsibleContent,
-} from '@/components/ui/collapsible';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -49,7 +60,9 @@ type AttendanceItem = {
     degree: string;
     faculty: string;
     online: boolean;
+    visitors: number;
     topics: string[];
+    topicKeys: string[];
     tutor: {
         id: number | null;
         name: string | null;
@@ -80,6 +93,8 @@ type Props = {
         faculties: string[];
         topics: SelectOption[];
         tutors: TutorOption[];
+        semesterRanges: Record<string, { start: string; end: string }>;
+        degreeFaculties: Record<string, string | null>;
     };
 };
 
@@ -88,22 +103,35 @@ export default function AdminAttendancesIndex({
     filters,
     formOptions,
 }: Props) {
-    const hasActiveFilters = Object.values(filters).some(
-        (value) => value !== '',
-    );
     const activeFilterCount = Object.values(filters).filter(
         (value) => value !== '',
     ).length;
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [editingAttendance, setEditingAttendance] =
+        useState<AttendanceItem | null>(null);
     const filterForm = useForm<Filters>(filters);
+    const editForm = useForm({
+        semester: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        degree: '',
+        faculty: '',
+        topics: [] as string[],
+        online: false,
+        visitors: 1,
+    });
 
     function applyFilters(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        router.visit(adminAttendancesIndex({ query: cleanFilters(filterForm.data) }), {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.visit(
+            adminAttendancesIndex({ query: cleanFilters(filterForm.data) }),
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     function resetFilters(): void {
@@ -123,6 +151,65 @@ export default function AdminAttendancesIndex({
             preserveState: true,
             replace: true,
         });
+    }
+
+    function selectFilterDegree(degree: string): void {
+        const selectedDegree = degree === FILTER_ALL ? '' : degree;
+
+        filterForm.setData({
+            ...filterForm.data,
+            degree: selectedDegree,
+            faculty:
+                formOptions.degreeFaculties[selectedDegree] ??
+                filterForm.data.faculty,
+        });
+    }
+
+    function openEditDialog(attendance: AttendanceItem): void {
+        setEditingAttendance(attendance);
+        editForm.setData({
+            semester: attendance.semester,
+            date: attendance.date,
+            startTime: attendance.startTime,
+            endTime: attendance.endTime,
+            degree: attendance.degree,
+            faculty: attendance.faculty,
+            topics: attendance.topicKeys,
+            online: attendance.online,
+            visitors: attendance.visitors,
+        });
+        editForm.clearErrors();
+    }
+
+    function submitUpdate(event: FormEvent<HTMLFormElement>): void {
+        event.preventDefault();
+
+        if (!editingAttendance) {
+            return;
+        }
+
+        editForm.submit(AttendanceController.update(editingAttendance.id), {
+            preserveScroll: true,
+            onSuccess: () => setEditingAttendance(null),
+        });
+    }
+
+    function selectEditDegree(degree: string): void {
+        editForm.setData({
+            ...editForm.data,
+            degree,
+            faculty:
+                formOptions.degreeFaculties[degree] ?? editForm.data.faculty,
+        });
+    }
+
+    function toggleEditTopic(topic: string, checked: boolean): void {
+        editForm.setData(
+            'topics',
+            checked
+                ? [...editForm.data.topics, topic]
+                : editForm.data.topics.filter((value) => value !== topic),
+        );
     }
 
     return (
@@ -187,11 +274,16 @@ export default function AdminAttendancesIndex({
                                     <div className="grid gap-2">
                                         <Label>Tutor</Label>
                                         <Select
-                                            value={filterForm.data.user || FILTER_ALL}
+                                            value={
+                                                filterForm.data.user ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'user',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -202,25 +294,32 @@ export default function AdminAttendancesIndex({
                                                 <SelectItem value={FILTER_ALL}>
                                                     Alle Tutor:innen
                                                 </SelectItem>
-                                                {formOptions.tutors.map((tutor) => (
-                                                    <SelectItem
-                                                        key={tutor.value}
-                                                        value={tutor.value}
-                                                    >
-                                                        {tutor.label}
-                                                    </SelectItem>
-                                                ))}
+                                                {formOptions.tutors.map(
+                                                    (tutor) => (
+                                                        <SelectItem
+                                                            key={tutor.value}
+                                                            value={tutor.value}
+                                                        >
+                                                            {tutor.label}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Semester</Label>
                                         <Select
-                                            value={filterForm.data.semester || FILTER_ALL}
+                                            value={
+                                                filterForm.data.semester ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'semester',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -231,27 +330,27 @@ export default function AdminAttendancesIndex({
                                                 <SelectItem value={FILTER_ALL}>
                                                     Alle Semester
                                                 </SelectItem>
-                                                {formOptions.semesters.map((semester) => (
-                                                    <SelectItem
-                                                        key={semester}
-                                                        value={semester}
-                                                    >
-                                                        {semester}
-                                                    </SelectItem>
-                                                ))}
+                                                {formOptions.semesters.map(
+                                                    (semester) => (
+                                                        <SelectItem
+                                                            key={semester}
+                                                            value={semester}
+                                                        >
+                                                            {semester}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Studiengang</Label>
                                         <Select
-                                            value={filterForm.data.degree || FILTER_ALL}
-                                            onValueChange={(value) =>
-                                                filterForm.setData(
-                                                    'degree',
-                                                    value === FILTER_ALL ? '' : value,
-                                                )
+                                            value={
+                                                filterForm.data.degree ||
+                                                FILTER_ALL
                                             }
+                                            onValueChange={selectFilterDegree}
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Studiengänge" />
@@ -260,25 +359,32 @@ export default function AdminAttendancesIndex({
                                                 <SelectItem value={FILTER_ALL}>
                                                     Alle Studiengänge
                                                 </SelectItem>
-                                                {formOptions.degrees.map((degree) => (
-                                                    <SelectItem
-                                                        key={degree}
-                                                        value={degree}
-                                                    >
-                                                        {degree}
-                                                    </SelectItem>
-                                                ))}
+                                                {formOptions.degrees.map(
+                                                    (degree) => (
+                                                        <SelectItem
+                                                            key={degree}
+                                                            value={degree}
+                                                        >
+                                                            {degree}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Fachbereich</Label>
                                         <Select
-                                            value={filterForm.data.faculty || FILTER_ALL}
+                                            value={
+                                                filterForm.data.faculty ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'faculty',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -289,25 +395,32 @@ export default function AdminAttendancesIndex({
                                                 <SelectItem value={FILTER_ALL}>
                                                     Alle Fachbereiche
                                                 </SelectItem>
-                                                {formOptions.faculties.map((faculty) => (
-                                                    <SelectItem
-                                                        key={faculty}
-                                                        value={faculty}
-                                                    >
-                                                        {faculty}
-                                                    </SelectItem>
-                                                ))}
+                                                {formOptions.faculties.map(
+                                                    (faculty) => (
+                                                        <SelectItem
+                                                            key={faculty}
+                                                            value={faculty}
+                                                        >
+                                                            {faculty}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Thema</Label>
                                         <Select
-                                            value={filterForm.data.topic || FILTER_ALL}
+                                            value={
+                                                filterForm.data.topic ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'topic',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -318,25 +431,32 @@ export default function AdminAttendancesIndex({
                                                 <SelectItem value={FILTER_ALL}>
                                                     Alle Themen
                                                 </SelectItem>
-                                                {formOptions.topics.map((topic) => (
-                                                    <SelectItem
-                                                        key={topic.value}
-                                                        value={topic.value}
-                                                    >
-                                                        {topic.label}
-                                                    </SelectItem>
-                                                ))}
+                                                {formOptions.topics.map(
+                                                    (topic) => (
+                                                        <SelectItem
+                                                            key={topic.value}
+                                                            value={topic.value}
+                                                        >
+                                                            {topic.label}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Modus</Label>
                                         <Select
-                                            value={filterForm.data.online || FILTER_ALL}
+                                            value={
+                                                filterForm.data.online ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'online',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -359,28 +479,26 @@ export default function AdminAttendancesIndex({
                                     <div className="grid gap-4 md:grid-cols-2 xl:col-span-2">
                                         <div className="grid gap-2">
                                             <Label htmlFor="from">Von</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="from"
-                                                type="date"
                                                 value={filterForm.data.from}
-                                                onChange={(event) =>
+                                                onChange={(value) =>
                                                     filterForm.setData(
                                                         'from',
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                             />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="until">Bis</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="until"
-                                                type="date"
                                                 value={filterForm.data.until}
-                                                onChange={(event) =>
+                                                onChange={(value) =>
                                                     filterForm.setData(
                                                         'until',
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                             />
@@ -450,19 +568,29 @@ export default function AdminAttendancesIndex({
                                                             ? 'Online'
                                                             : 'Präsenz'}
                                                     </Badge>
+                                                    <Badge variant="outline">
+                                                        <Users className="size-3.5" />
+                                                        {attendance.visitors}{' '}
+                                                        {attendance.visitors ===
+                                                        1
+                                                            ? 'Besucher:in'
+                                                            : 'Besucher:innen'}
+                                                    </Badge>
                                                 </div>
                                                 <div className="grid gap-2 text-sm md:grid-cols-2">
                                                     <div className="flex items-center gap-2 text-foreground">
                                                         <Users className="size-4 text-muted-foreground" />
                                                         <span className="font-medium">
-                                                            {attendance.tutor?.name ??
+                                                            {attendance.tutor
+                                                                ?.name ??
                                                                 'Unbekannt'}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-muted-foreground">
                                                         <Mail className="size-4" />
                                                         <span>
-                                                            {attendance.tutor?.email ??
+                                                            {attendance.tutor
+                                                                ?.email ??
                                                                 'Keine E-Mail'}
                                                         </span>
                                                     </div>
@@ -471,7 +599,9 @@ export default function AdminAttendancesIndex({
                                                     <div className="flex items-center gap-2">
                                                         <School className="size-4" />
                                                         <span>
-                                                            {attendance.semester}
+                                                            {
+                                                                attendance.semester
+                                                            }
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -489,15 +619,30 @@ export default function AdminAttendancesIndex({
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap gap-2 lg:max-w-md lg:justify-end">
-                                                {attendance.topics.map((topic) => (
-                                                    <Badge
-                                                        key={topic}
-                                                        variant="outline"
-                                                        className="bg-background"
-                                                    >
-                                                        {topic}
-                                                    </Badge>
-                                                ))}
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        openEditDialog(
+                                                            attendance,
+                                                        )
+                                                    }
+                                                >
+                                                    <PencilLine className="size-3.5" />
+                                                    Bearbeiten
+                                                </Button>
+                                                {attendance.topics.map(
+                                                    (topic) => (
+                                                        <Badge
+                                                            key={topic}
+                                                            variant="outline"
+                                                            className="bg-background"
+                                                        >
+                                                            {topic}
+                                                        </Badge>
+                                                    ),
+                                                )}
                                             </div>
                                         </div>
                                     </article>
@@ -508,6 +653,231 @@ export default function AdminAttendancesIndex({
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog
+                open={editingAttendance !== null}
+                onOpenChange={(open) => !open && setEditingAttendance(null)}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Eintrag bearbeiten</DialogTitle>
+                        <DialogDescription>
+                            Der Eintrag bleibt{' '}
+                            {editingAttendance?.tutor?.name ??
+                                'der bisherigen Person'}{' '}
+                            zugeordnet.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={submitUpdate} className="space-y-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label>Semester</Label>
+                                <Select
+                                    value={editForm.data.semester}
+                                    onValueChange={(value) =>
+                                        editForm.setData('semester', value)
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Semester wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formOptions.semesters.map(
+                                            (semester) => (
+                                                <SelectItem
+                                                    key={semester}
+                                                    value={semester}
+                                                >
+                                                    {semester}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <InputError
+                                    message={editForm.errors.semester}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="admin-edit-date">Datum</Label>
+                                <LocalizedDateInput
+                                    id="admin-edit-date"
+                                    required
+                                    value={editForm.data.date}
+                                    onChange={(value) =>
+                                        editForm.setData('date', value)
+                                    }
+                                />
+                                <InputError message={editForm.errors.date} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="admin-edit-start">
+                                    Startzeit
+                                </Label>
+                                <TimeInput
+                                    id="admin-edit-start"
+                                    required
+                                    value={editForm.data.startTime}
+                                    onChange={(event) =>
+                                        editForm.setData(
+                                            'startTime',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={editForm.errors.startTime}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="admin-edit-end">Endzeit</Label>
+                                <TimeInput
+                                    id="admin-edit-end"
+                                    required
+                                    value={editForm.data.endTime}
+                                    onChange={(event) =>
+                                        editForm.setData(
+                                            'endTime',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                                <InputError message={editForm.errors.endTime} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Studiengang</Label>
+                                <Select
+                                    value={editForm.data.degree}
+                                    onValueChange={selectEditDegree}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Studiengang wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formOptions.degrees.map((degree) => (
+                                            <SelectItem
+                                                key={degree}
+                                                value={degree}
+                                            >
+                                                {degree}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={editForm.errors.degree} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Fachbereich</Label>
+                                <Select
+                                    value={editForm.data.faculty}
+                                    onValueChange={(value) =>
+                                        editForm.setData('faculty', value)
+                                    }
+                                >
+                                    <SelectTrigger
+                                        className="w-full"
+                                        disabled={Boolean(
+                                            formOptions.degreeFaculties[
+                                                editForm.data.degree
+                                            ],
+                                        )}
+                                    >
+                                        <SelectValue placeholder="Fachbereich wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formOptions.faculties.map(
+                                            (faculty) => (
+                                                <SelectItem
+                                                    key={faculty}
+                                                    value={faculty}
+                                                >
+                                                    {faculty}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={editForm.errors.faculty} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="admin-edit-visitors">
+                                    Anzahl Besucher:innen
+                                </Label>
+                                <Input
+                                    id="admin-edit-visitors"
+                                    type="number"
+                                    min="1"
+                                    max="1000"
+                                    required
+                                    value={editForm.data.visitors}
+                                    onChange={(event) =>
+                                        editForm.setData(
+                                            'visitors',
+                                            Number(event.target.value),
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={editForm.errors.visitors}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid gap-3">
+                            <Label>Themen</Label>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {formOptions.topics.map((topic) => (
+                                    <label
+                                        key={topic.value}
+                                        className="flex items-start gap-3 rounded-lg border p-3"
+                                    >
+                                        <Checkbox
+                                            checked={editForm.data.topics.includes(
+                                                topic.value,
+                                            )}
+                                            onCheckedChange={(checked) =>
+                                                toggleEditTopic(
+                                                    topic.value,
+                                                    checked === true,
+                                                )
+                                            }
+                                        />
+                                        <span className="text-sm font-medium">
+                                            {topic.label}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                            <InputError message={editForm.errors.topics} />
+                        </div>
+                        <label className="flex items-center gap-3 rounded-lg border p-4">
+                            <Checkbox
+                                checked={editForm.data.online}
+                                onCheckedChange={(checked) =>
+                                    editForm.setData('online', checked === true)
+                                }
+                            />
+                            <span className="text-sm font-medium">
+                                Online-Beratung
+                            </span>
+                        </label>
+                        <div className="flex flex-wrap gap-3">
+                            <Button
+                                type="submit"
+                                disabled={editForm.processing}
+                            >
+                                Änderungen speichern
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setEditingAttendance(null)}
+                            >
+                                Abbrechen
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

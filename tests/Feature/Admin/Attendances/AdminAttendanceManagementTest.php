@@ -62,7 +62,48 @@ it('shows all attendances to admins and supports tutor filtering', function () {
             ->has('formOptions.tutors'));
 });
 
-it('forbids non admins from opening the admin attendance page', function () {
+it('allows moderators to open the admin attendance page and update entries', function () {
+    $moderator = User::factory()->create(['isMod' => true]);
+    $tutor = User::factory()->create();
+    $semester = Semester::factory()->create([
+        'semester' => 'WS 2025/2026',
+        'start' => '2025-10-01',
+        'end' => '2026-04-30',
+    ]);
+    $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
+    $degree = Degree::factory()->create([
+        'name' => 'Informatik',
+        'faculty_id' => $faculty->id,
+    ]);
+    $attendance = Attendance::factory()
+        ->for($tutor)
+        ->forSemester($semester)
+        ->forDegree($degree)
+        ->forFaculty($faculty)
+        ->create(['date' => '2026-04-12']);
+
+    $this->actingAs($moderator)
+        ->get(route('admin.attendances.index'))
+        ->assertOk();
+
+    $this->actingAs($moderator)
+        ->put(route('attendances.update', $attendance), [
+            'semester' => $semester->semester,
+            'date' => '2026-04-12',
+            'startTime' => '09:00',
+            'endTime' => '10:00',
+            'degree' => $degree->name,
+            'faculty' => $faculty->name,
+            'topics' => ['programming'],
+            'online' => true,
+            'visitors' => 2,
+        ])
+        ->assertRedirect();
+
+    expect($attendance->refresh()->visitors)->toBe(2);
+});
+
+it('forbids tutors from opening the admin attendance page', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)

@@ -1,14 +1,22 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart3, Building2, CalendarRange, ClipboardList, GraduationCap, Shield, Users } from 'lucide-react';
+import {
+    BarChart3,
+    Building2,
+    CalendarRange,
+    ClipboardList,
+    GraduationCap,
+    Shield,
+    Users,
+} from 'lucide-react';
+import { index as adminDegrees } from '@/actions/App/Http/Controllers/AdminDegreeController';
+import { index as adminFaculties } from '@/actions/App/Http/Controllers/AdminFacultyController';
+import { index as adminSemesters } from '@/actions/App/Http/Controllers/AdminSemesterController';
+import { index as adminUsers } from '@/actions/App/Http/Controllers/AdminUserController';
 import {
     adminIndex as adminAttendances,
     index as attendances,
     statistics as adminStatistics,
 } from '@/actions/App/Http/Controllers/AttendanceController';
-import { index as adminDegrees } from '@/actions/App/Http/Controllers/AdminDegreeController';
-import { index as adminFaculties } from '@/actions/App/Http/Controllers/AdminFacultyController';
-import { index as adminUsers } from '@/actions/App/Http/Controllers/AdminUserController';
-import { index as adminSemesters } from '@/actions/App/Http/Controllers/AdminSemesterController';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -47,7 +55,7 @@ export function AppSidebar() {
         },
     ];
 
-    if (page.props.auth.user.isAdmin) {
+    if (page.props.auth.user.isMod || page.props.auth.user.isAdmin) {
         mainNavItems.push({
             title: 'Alle Einsätze',
             href: adminAttendances(),
@@ -58,6 +66,9 @@ export function AppSidebar() {
             href: adminStatistics(),
             icon: BarChart3,
         });
+    }
+
+    if (page.props.auth.user.isAdmin) {
         mainNavItems.push({
             title: 'Benutzer',
             href: adminUsers(),

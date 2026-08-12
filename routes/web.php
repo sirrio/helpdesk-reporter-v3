@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AdminDegreeController;
 use App\Http\Controllers\AdminFacultyController;
-use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminSemesterController;
+use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AttendanceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::redirect('dashboard', '/attendances')->name('dashboard');
     Route::get('attendances', [AttendanceController::class, 'index'])->name('attendances.index');
     Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
+    Route::put('attendances/{attendance}', [AttendanceController::class, 'update'])
+        ->name('attendances.update');
     Route::get('admin/attendances', [AttendanceController::class, 'adminIndex'])
         ->middleware('can:view-admin-attendances')
         ->name('admin.attendances.index');

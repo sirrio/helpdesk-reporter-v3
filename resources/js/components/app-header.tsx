@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ClipboardList, Menu } from 'lucide-react';
+import { index as attendances } from '@/actions/App/Http/Controllers/AttendanceController';
 import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -27,7 +28,6 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
-import { index as attendances } from '@/actions/App/Http/Controllers/AttendanceController';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {

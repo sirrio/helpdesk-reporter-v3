@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
 class AdminAttendanceIndexRequest extends AttendanceIndexRequest
@@ -11,13 +12,13 @@ class AdminAttendanceIndexRequest extends AttendanceIndexRequest
      */
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isAdmin;
+        return $this->user()?->isMod === true || $this->user()?->isAdmin === true;
     }
 
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, \Illuminate\Contracts\Validation\ValidationRule|string>|string>
+     * @return array<string, array<int, ValidationRule|string>|string>
      */
     public function rules(): array
     {

@@ -37,8 +37,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             SemesterSeeder::class,
-            DegreeSeeder::class,
             FacultySeeder::class,
+            DegreeSeeder::class,
             AttendanceSeeder::class,
         ]);
     }

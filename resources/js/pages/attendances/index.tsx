@@ -1,5 +1,4 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
 import {
     CalendarDays,
     ChevronDown,
@@ -8,14 +7,20 @@ import {
     Filter,
     GraduationCap,
     MonitorSmartphone,
+    PencilLine,
     Plus,
     School,
+    Users,
 } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import AttendanceController, {
     index as attendancesIndex,
 } from '@/actions/App/Http/Controllers/AttendanceController';
 import InputError from '@/components/input-error';
+import { LocalizedDateInput } from '@/components/localized-date-input';
 import { PaginationLinks } from '@/components/pagination-links';
+import { TimeInput } from '@/components/time-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,10 +31,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Collapsible,
-    CollapsibleContent,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -60,7 +62,9 @@ type AttendanceItem = {
     degree: string;
     faculty: string;
     online: boolean;
+    visitors: number;
     topics: string[];
+    topicKeys: string[];
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -83,6 +87,8 @@ type Props = {
         degrees: string[];
         faculties: string[];
         topics: TopicOption[];
+        semesterRanges: Record<string, { start: string; end: string }>;
+        degreeFaculties: Record<string, string | null>;
     };
     canCreateEntries: boolean;
 };
@@ -93,23 +99,58 @@ export default function AttendancesIndex({
     formOptions,
     canCreateEntries,
 }: Props) {
-    const hasActiveFilters = Object.values(filters).some(
-        (value) => value !== '',
-    );
     const activeFilterCount = Object.values(filters).filter(
         (value) => value !== '',
     ).length;
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [editingAttendance, setEditingAttendance] =
+        useState<AttendanceItem | null>(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const today = new Date().toISOString().slice(0, 10);
+    const defaultSemester =
+        formOptions.semesters.find((semester) => {
+            const range = formOptions.semesterRanges[semester];
+
+            return range && range.start <= today && range.end >= today;
+        }) ??
+        formOptions.semesters.find(
+            (semester) => formOptions.semesterRanges[semester]?.start <= today,
+        ) ??
+        formOptions.semesters[0] ??
+        '';
+    const defaultSemesterRange = formOptions.semesterRanges[defaultSemester];
+    const defaultDate = defaultSemesterRange
+        ? today < defaultSemesterRange.start
+            ? defaultSemesterRange.start
+            : today > defaultSemesterRange.end
+              ? defaultSemesterRange.end
+              : today
+        : today;
+    const defaultDegree = formOptions.degrees[0] ?? '';
     const createForm = useForm({
-        semester: formOptions.semesters[0] ?? '',
-        date: new Date().toISOString().slice(0, 10),
+        semester: defaultSemester,
+        date: defaultDate,
         startTime: '09:00',
         endTime: '10:00',
-        degree: formOptions.degrees[0] ?? '',
-        faculty: formOptions.faculties[0] ?? '',
+        degree: defaultDegree,
+        faculty:
+            formOptions.degreeFaculties[defaultDegree] ??
+            formOptions.faculties[0] ??
+            '',
         topics: [] as string[],
         online: false,
+        visitors: 1,
+    });
+    const editForm = useForm({
+        semester: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        degree: '',
+        faculty: '',
+        topics: [] as string[],
+        online: false,
+        visitors: 1,
     });
     const filterForm = useForm<Filters>(filters);
 
@@ -156,6 +197,18 @@ export default function AttendancesIndex({
         });
     }
 
+    function selectFilterDegree(degree: string): void {
+        const selectedDegree = degree === FILTER_ALL ? '' : degree;
+
+        filterForm.setData({
+            ...filterForm.data,
+            degree: selectedDegree,
+            faculty:
+                formOptions.degreeFaculties[selectedDegree] ??
+                filterForm.data.faculty,
+        });
+    }
+
     function toggleTopic(topic: string, checked: boolean): void {
         createForm.setData(
             'topics',
@@ -163,6 +216,75 @@ export default function AttendancesIndex({
                 ? [...createForm.data.topics, topic]
                 : createForm.data.topics.filter((value) => value !== topic),
         );
+    }
+
+    function selectCreateDegree(degree: string): void {
+        createForm.setData({
+            ...createForm.data,
+            degree,
+            faculty:
+                formOptions.degreeFaculties[degree] ?? createForm.data.faculty,
+        });
+    }
+
+    function selectCreateSemester(semester: string): void {
+        const range = formOptions.semesterRanges[semester];
+        const date = range
+            ? createForm.data.date < range.start
+                ? range.start
+                : createForm.data.date > range.end
+                  ? range.end
+                  : createForm.data.date
+            : createForm.data.date;
+
+        createForm.setData({ ...createForm.data, semester, date });
+    }
+
+    function openEditDialog(attendance: AttendanceItem): void {
+        setEditingAttendance(attendance);
+        editForm.setData({
+            semester: attendance.semester,
+            date: attendance.date,
+            startTime: attendance.startTime,
+            endTime: attendance.endTime,
+            degree: attendance.degree,
+            faculty: attendance.faculty,
+            topics: attendance.topicKeys,
+            online: attendance.online,
+            visitors: attendance.visitors,
+        });
+        editForm.clearErrors();
+    }
+
+    function submitUpdate(event: FormEvent<HTMLFormElement>): void {
+        event.preventDefault();
+
+        if (!editingAttendance) {
+            return;
+        }
+
+        editForm.submit(AttendanceController.update(editingAttendance.id), {
+            preserveScroll: true,
+            onSuccess: () => setEditingAttendance(null),
+        });
+    }
+
+    function toggleEditTopic(topic: string, checked: boolean): void {
+        editForm.setData(
+            'topics',
+            checked
+                ? [...editForm.data.topics, topic]
+                : editForm.data.topics.filter((value) => value !== topic),
+        );
+    }
+
+    function selectEditDegree(degree: string): void {
+        editForm.setData({
+            ...editForm.data,
+            degree,
+            faculty:
+                formOptions.degreeFaculties[degree] ?? editForm.data.faculty,
+        });
     }
 
     return (
@@ -176,7 +298,7 @@ export default function AttendancesIndex({
                         </h1>
                         <p className="text-sm text-muted-foreground">
                             Erfasse Helpdesk-Einsätze und behalte deine
-                            bisherigen Tutoreneinträge im Blick.
+                            bisherigen Einträge im Blick.
                         </p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -217,8 +339,8 @@ export default function AttendancesIndex({
                                         Neuen Eintrag erstellen
                                     </DialogTitle>
                                     <DialogDescription>
-                                        Der Eintrag wird automatisch dir als
-                                        eingeloggtem Tutor zugeordnet.
+                                        Der Eintrag wird automatisch deinem
+                                        Login-Namen zugeordnet.
                                     </DialogDescription>
                                 </DialogHeader>
                                 {!canCreateEntries && (
@@ -236,11 +358,8 @@ export default function AttendancesIndex({
                                             <Label>Semester</Label>
                                             <Select
                                                 value={createForm.data.semester}
-                                                onValueChange={(value) =>
-                                                    createForm.setData(
-                                                        'semester',
-                                                        value,
-                                                    )
+                                                onValueChange={
+                                                    selectCreateSemester
                                                 }
                                             >
                                                 <SelectTrigger className="w-full">
@@ -267,14 +386,14 @@ export default function AttendancesIndex({
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="date">Datum</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="date"
-                                                type="date"
+                                                required
                                                 value={createForm.data.date}
-                                                onChange={(event) =>
+                                                onChange={(value) =>
                                                     createForm.setData(
                                                         'date',
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                             />
@@ -286,9 +405,9 @@ export default function AttendancesIndex({
                                             <Label htmlFor="startTime">
                                                 Startzeit
                                             </Label>
-                                            <Input
+                                            <TimeInput
                                                 id="startTime"
-                                                type="time"
+                                                required
                                                 value={
                                                     createForm.data.startTime
                                                 }
@@ -309,9 +428,9 @@ export default function AttendancesIndex({
                                             <Label htmlFor="endTime">
                                                 Endzeit
                                             </Label>
-                                            <Input
+                                            <TimeInput
                                                 id="endTime"
-                                                type="time"
+                                                required
                                                 value={createForm.data.endTime}
                                                 onChange={(event) =>
                                                     createForm.setData(
@@ -330,11 +449,8 @@ export default function AttendancesIndex({
                                             <Label>Studiengang</Label>
                                             <Select
                                                 value={createForm.data.degree}
-                                                onValueChange={(value) =>
-                                                    createForm.setData(
-                                                        'degree',
-                                                        value,
-                                                    )
+                                                onValueChange={
+                                                    selectCreateDegree
                                                 }
                                             >
                                                 <SelectTrigger className="w-full">
@@ -370,7 +486,16 @@ export default function AttendancesIndex({
                                                     )
                                                 }
                                             >
-                                                <SelectTrigger className="w-full">
+                                                <SelectTrigger
+                                                    className="w-full"
+                                                    disabled={Boolean(
+                                                        formOptions
+                                                            .degreeFaculties[
+                                                            createForm.data
+                                                                .degree
+                                                        ],
+                                                    )}
+                                                >
                                                     <SelectValue placeholder="Fachbereich wählen" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -389,6 +514,40 @@ export default function AttendancesIndex({
                                             <InputError
                                                 message={
                                                     createForm.errors.faculty
+                                                }
+                                            />
+                                            {formOptions.degreeFaculties[
+                                                createForm.data.degree
+                                            ] && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Wird automatisch aus dem
+                                                    Studiengang übernommen.
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="visitors">
+                                                Anzahl Besucher:innen
+                                            </Label>
+                                            <Input
+                                                id="visitors"
+                                                type="number"
+                                                min="1"
+                                                max="1000"
+                                                required
+                                                value={createForm.data.visitors}
+                                                onChange={(event) =>
+                                                    createForm.setData(
+                                                        'visitors',
+                                                        Number(
+                                                            event.target.value,
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    createForm.errors.visitors
                                                 }
                                             />
                                         </div>
@@ -440,8 +599,8 @@ export default function AttendancesIndex({
                                                 Online-Einsatz
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                Aktiviere diese Option für
-                                                einen Online-Termin.
+                                                Aktiviere diese Option für einen
+                                                Online-Termin.
                                             </p>
                                         </div>
                                     </div>
@@ -502,12 +661,15 @@ export default function AttendancesIndex({
                                         <Label>Semester</Label>
                                         <Select
                                             value={
-                                                filterForm.data.semester || FILTER_ALL
+                                                filterForm.data.semester ||
+                                                FILTER_ALL
                                             }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'semester',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -535,14 +697,10 @@ export default function AttendancesIndex({
                                         <Label>Studiengang</Label>
                                         <Select
                                             value={
-                                                filterForm.data.degree || FILTER_ALL
+                                                filterForm.data.degree ||
+                                                FILTER_ALL
                                             }
-                                            onValueChange={(value) =>
-                                                filterForm.setData(
-                                                    'degree',
-                                                    value === FILTER_ALL ? '' : value,
-                                                )
-                                            }
+                                            onValueChange={selectFilterDegree}
                                         >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Alle Studiengänge" />
@@ -568,12 +726,15 @@ export default function AttendancesIndex({
                                         <Label>Fachbereich</Label>
                                         <Select
                                             value={
-                                                filterForm.data.faculty || FILTER_ALL
+                                                filterForm.data.faculty ||
+                                                FILTER_ALL
                                             }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'faculty',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -600,11 +761,16 @@ export default function AttendancesIndex({
                                     <div className="grid gap-2">
                                         <Label>Thema</Label>
                                         <Select
-                                            value={filterForm.data.topic || FILTER_ALL}
+                                            value={
+                                                filterForm.data.topic ||
+                                                FILTER_ALL
+                                            }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'topic',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -632,12 +798,15 @@ export default function AttendancesIndex({
                                         <Label>Modus</Label>
                                         <Select
                                             value={
-                                                filterForm.data.online || FILTER_ALL
+                                                filterForm.data.online ||
+                                                FILTER_ALL
                                             }
                                             onValueChange={(value) =>
                                                 filterForm.setData(
                                                     'online',
-                                                    value === FILTER_ALL ? '' : value,
+                                                    value === FILTER_ALL
+                                                        ? ''
+                                                        : value,
                                                 )
                                             }
                                         >
@@ -660,28 +829,26 @@ export default function AttendancesIndex({
                                     <div className="grid gap-4 md:grid-cols-2 xl:col-span-2">
                                         <div className="grid gap-2">
                                             <Label htmlFor="from">Von</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="from"
-                                                type="date"
                                                 value={filterForm.data.from}
-                                                onChange={(event) =>
+                                                onChange={(value) =>
                                                     filterForm.setData(
                                                         'from',
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                             />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="until">Bis</Label>
-                                            <Input
+                                            <LocalizedDateInput
                                                 id="until"
-                                                type="date"
                                                 value={filterForm.data.until}
-                                                onChange={(event) =>
+                                                onChange={(value) =>
                                                     filterForm.setData(
                                                         'until',
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                             />
@@ -751,6 +918,14 @@ export default function AttendancesIndex({
                                                             ? 'Online'
                                                             : 'Präsenz'}
                                                     </Badge>
+                                                    <Badge variant="outline">
+                                                        <Users className="size-3.5" />
+                                                        {attendance.visitors}{' '}
+                                                        {attendance.visitors ===
+                                                        1
+                                                            ? 'Besucher:in'
+                                                            : 'Besucher:innen'}
+                                                    </Badge>
                                                 </div>
                                                 <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
                                                     <div className="flex items-center gap-2">
@@ -776,6 +951,19 @@ export default function AttendancesIndex({
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap gap-2 lg:max-w-md lg:justify-end">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        openEditDialog(
+                                                            attendance,
+                                                        )
+                                                    }
+                                                >
+                                                    <PencilLine className="size-3.5" />
+                                                    Bearbeiten
+                                                </Button>
                                                 {attendance.topics.map(
                                                     (topic) => (
                                                         <Badge
@@ -797,6 +985,232 @@ export default function AttendancesIndex({
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog
+                open={editingAttendance !== null}
+                onOpenChange={(open) => !open && setEditingAttendance(null)}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Eintrag bearbeiten</DialogTitle>
+                        <DialogDescription>
+                            Korrigiere die Angaben dieser Beratung. Die
+                            Zuordnung zu deinem Login bleibt unverändert.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={submitUpdate} className="space-y-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label>Semester</Label>
+                                <Select
+                                    value={editForm.data.semester}
+                                    onValueChange={(value) =>
+                                        editForm.setData('semester', value)
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Semester wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formOptions.semesters.map(
+                                            (semester) => (
+                                                <SelectItem
+                                                    key={semester}
+                                                    value={semester}
+                                                >
+                                                    {semester}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <InputError
+                                    message={editForm.errors.semester}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-date">Datum</Label>
+                                <LocalizedDateInput
+                                    id="edit-date"
+                                    required
+                                    value={editForm.data.date}
+                                    onChange={(value) =>
+                                        editForm.setData('date', value)
+                                    }
+                                />
+                                <InputError message={editForm.errors.date} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-start-time">
+                                    Startzeit
+                                </Label>
+                                <TimeInput
+                                    id="edit-start-time"
+                                    required
+                                    value={editForm.data.startTime}
+                                    onChange={(event) =>
+                                        editForm.setData(
+                                            'startTime',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={editForm.errors.startTime}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-end-time">Endzeit</Label>
+                                <TimeInput
+                                    id="edit-end-time"
+                                    required
+                                    value={editForm.data.endTime}
+                                    onChange={(event) =>
+                                        editForm.setData(
+                                            'endTime',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                                <InputError message={editForm.errors.endTime} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Studiengang</Label>
+                                <Select
+                                    value={editForm.data.degree}
+                                    onValueChange={selectEditDegree}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Studiengang wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formOptions.degrees.map((degree) => (
+                                            <SelectItem
+                                                key={degree}
+                                                value={degree}
+                                            >
+                                                {degree}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={editForm.errors.degree} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Fachbereich</Label>
+                                <Select
+                                    value={editForm.data.faculty}
+                                    onValueChange={(value) =>
+                                        editForm.setData('faculty', value)
+                                    }
+                                >
+                                    <SelectTrigger
+                                        className="w-full"
+                                        disabled={Boolean(
+                                            formOptions.degreeFaculties[
+                                                editForm.data.degree
+                                            ],
+                                        )}
+                                    >
+                                        <SelectValue placeholder="Fachbereich wählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {formOptions.faculties.map(
+                                            (faculty) => (
+                                                <SelectItem
+                                                    key={faculty}
+                                                    value={faculty}
+                                                >
+                                                    {faculty}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={editForm.errors.faculty} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-visitors">
+                                    Anzahl Besucher:innen
+                                </Label>
+                                <Input
+                                    id="edit-visitors"
+                                    type="number"
+                                    min="1"
+                                    max="1000"
+                                    required
+                                    value={editForm.data.visitors}
+                                    onChange={(event) =>
+                                        editForm.setData(
+                                            'visitors',
+                                            Number(event.target.value),
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={editForm.errors.visitors}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid gap-3">
+                            <Label>Themen</Label>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {formOptions.topics.map((topic) => (
+                                    <label
+                                        key={topic.value}
+                                        className="flex items-start gap-3 rounded-lg border p-3"
+                                    >
+                                        <Checkbox
+                                            checked={editForm.data.topics.includes(
+                                                topic.value,
+                                            )}
+                                            onCheckedChange={(checked) =>
+                                                toggleEditTopic(
+                                                    topic.value,
+                                                    checked === true,
+                                                )
+                                            }
+                                        />
+                                        <span className="text-sm font-medium">
+                                            {topic.label}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                            <InputError message={editForm.errors.topics} />
+                        </div>
+                        <label className="flex items-center gap-3 rounded-lg border p-4">
+                            <Checkbox
+                                checked={editForm.data.online}
+                                onCheckedChange={(checked) =>
+                                    editForm.setData('online', checked === true)
+                                }
+                            />
+                            <span className="text-sm font-medium">
+                                Online-Beratung
+                            </span>
+                        </label>
+                        <div className="flex flex-wrap gap-3">
+                            <Button
+                                type="submit"
+                                disabled={editForm.processing}
+                            >
+                                {editForm.processing && (
+                                    <Spinner className="mr-2" />
+                                )}
+                                Änderungen speichern
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setEditingAttendance(null)}
+                            >
+                                Abbrechen
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

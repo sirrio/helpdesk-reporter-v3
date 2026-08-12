@@ -2,10 +2,18 @@ import type { SVGAttributes } from 'react';
 
 export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
     return (
-        <svg {...props} viewBox="145 93 84 118" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">
+        <svg
+            {...props}
+            viewBox="145 93 84 118"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlnsXlink="http://www.w3.org/1999/xlink"
+        >
             <defs>
                 <clipPath id="logo-clip">
-                    <path d="M 145.378906 93 L 229.378906 93 L 229.378906 210.75 L 145.378906 210.75 Z" clipRule="nonzero" />
+                    <path
+                        d="M 145.378906 93 L 229.378906 93 L 229.378906 210.75 L 145.378906 210.75 Z"
+                        clipRule="nonzero"
+                    />
                 </clipPath>
             </defs>
             <g clipPath="url(#logo-clip)">

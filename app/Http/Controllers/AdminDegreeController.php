@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDegreeRequest;
 use App\Http\Requests\UpdateDegreeRequest;
 use App\Models\Attendance;
 use App\Models\Degree;
+use App\Models\Faculty;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -23,6 +24,7 @@ class AdminDegreeController extends Controller
 
         $degrees = Degree::query()
             ->withTrashed()
+            ->with('faculty:id,name')
             ->withCount('attendances')
             ->when(
                 ($filters['status'] ?? 'all') === 'active',
@@ -38,6 +40,8 @@ class AdminDegreeController extends Controller
             ->through(fn (Degree $degree) => [
                 'id' => $degree->id,
                 'name' => $degree->name,
+                'facultyId' => $degree->faculty_id,
+                'faculty' => $degree->faculty?->name,
                 'attendancesCount' => $degree->attendances_count,
                 'deletedAt' => $degree->deleted_at?->toISOString(),
             ]);
@@ -47,6 +51,9 @@ class AdminDegreeController extends Controller
             'filters' => [
                 'status' => $filters['status'] ?? '',
             ],
+            'faculties' => Faculty::query()
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -71,13 +78,18 @@ class AdminDegreeController extends Controller
     public function update(UpdateDegreeRequest $request, Degree $degree): RedirectResponse
     {
         $validated = $request->validated();
+        $validated['faculty_id'] = (int) $validated['faculty_id'];
         $originalName = $degree->name;
+        $facultyName = Faculty::query()->findOrFail($validated['faculty_id'])->name;
 
-        DB::transaction(function () use ($degree, $validated, $originalName): void {
-            if ($validated['name'] !== $originalName) {
+        DB::transaction(function () use ($degree, $validated, $originalName, $facultyName): void {
+            if ($validated['name'] !== $originalName || $degree->faculty_id !== $validated['faculty_id']) {
                 Attendance::query()
                     ->where('degree', $originalName)
-                    ->update(['degree' => $validated['name']]);
+                    ->update([
+                        'degree' => $validated['name'],
+                        'faculty' => $facultyName,
+                    ]);
             }
 
             $degree->update($validated);

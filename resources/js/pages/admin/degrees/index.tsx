@@ -1,6 +1,13 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
-import { Archive, GraduationCap, PencilLine, Plus, RotateCcw } from 'lucide-react';
+import {
+    Archive,
+    GraduationCap,
+    PencilLine,
+    Plus,
+    RotateCcw,
+} from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import {
     destroy as destroyDegree,
     index as adminDegreesIndex,
@@ -39,28 +46,38 @@ import {
 type DegreeItem = {
     id: number;
     name: string;
+    facultyId: number | null;
+    faculty: string | null;
     attendancesCount: number;
     deletedAt: string | null;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
 type Filters = { status: string };
+type FacultyOption = { id: number; name: string };
 type Props = {
     degrees: { data: DegreeItem[]; links: PaginationLink[] };
     filters: Filters;
+    faculties: FacultyOption[];
 };
 
 const ALL = '__all__';
 
-export default function AdminDegreesIndex({ degrees, filters }: Props) {
+export default function AdminDegreesIndex({
+    degrees,
+    filters,
+    faculties,
+}: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [editingDegree, setEditingDegree] = useState<DegreeItem | null>(null);
     const filterForm = useForm<Filters>(filters);
     const createForm = useForm({
         name: '',
+        faculty_id: '',
     });
     const editForm = useForm({
         name: '',
+        faculty_id: '',
     });
 
     function submitCreate(event: FormEvent<HTMLFormElement>): void {
@@ -78,6 +95,7 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
         setEditingDegree(degree);
         editForm.setData({
             name: degree.name,
+            faculty_id: degree.facultyId?.toString() ?? '',
         });
         editForm.clearErrors();
     }
@@ -105,7 +123,8 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                             Studiengänge
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Pflege die auswählbaren Studiengänge für neue Helpdesk-Einsätze.
+                            Pflege die auswählbaren Studiengänge für neue
+                            Helpdesk-Einsätze.
                         </p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -132,7 +151,9 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                             <SelectContent>
                                 <SelectItem value={ALL}>Alle</SelectItem>
                                 <SelectItem value="active">Aktiv</SelectItem>
-                                <SelectItem value="archived">Archiviert</SelectItem>
+                                <SelectItem value="archived">
+                                    Archiviert
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <Dialog
@@ -147,32 +168,81 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-lg">
                                 <DialogHeader>
-                                    <DialogTitle>Studiengang anlegen</DialogTitle>
+                                    <DialogTitle>
+                                        Studiengang anlegen
+                                    </DialogTitle>
                                     <DialogDescription>
-                                        Der Wert steht danach sofort im Eingabeformular zur Auswahl.
+                                        Der Wert steht danach sofort im
+                                        Eingabeformular zur Auswahl.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <form onSubmit={submitCreate} className="space-y-5">
+                                <form
+                                    onSubmit={submitCreate}
+                                    className="space-y-5"
+                                >
                                     <div className="grid gap-2">
-                                        <Label htmlFor="create-degree">Bezeichnung</Label>
+                                        <Label htmlFor="create-degree">
+                                            Bezeichnung
+                                        </Label>
                                         <Input
                                             id="create-degree"
                                             value={createForm.data.name}
                                             onChange={(event) =>
-                                                createForm.setData('name', event.target.value)
+                                                createForm.setData(
+                                                    'name',
+                                                    event.target.value,
+                                                )
                                             }
                                             placeholder="Wirtschaftsinformatik"
                                         />
-                                        <InputError message={createForm.errors.name} />
+                                        <InputError
+                                            message={createForm.errors.name}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Fachbereich</Label>
+                                        <Select
+                                            value={createForm.data.faculty_id}
+                                            onValueChange={(value) =>
+                                                createForm.setData(
+                                                    'faculty_id',
+                                                    value,
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Fachbereich auswählen" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {faculties.map((faculty) => (
+                                                    <SelectItem
+                                                        key={faculty.id}
+                                                        value={faculty.id.toString()}
+                                                    >
+                                                        {faculty.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={
+                                                createForm.errors.faculty_id
+                                            }
+                                        />
                                     </div>
                                     <div className="flex flex-wrap gap-3">
-                                        <Button type="submit" disabled={createForm.processing}>
+                                        <Button
+                                            type="submit"
+                                            disabled={createForm.processing}
+                                        >
                                             Studiengang speichern
                                         </Button>
                                         <Button
                                             type="button"
                                             variant="outline"
-                                            onClick={() => setIsCreateDialogOpen(false)}
+                                            onClick={() =>
+                                                setIsCreateDialogOpen(false)
+                                            }
                                         >
                                             Abbrechen
                                         </Button>
@@ -190,14 +260,16 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                             <CardTitle>Studiengänge</CardTitle>
                         </div>
                         <CardDescription>
-                            Aktive und archivierte Werte inklusive zugeordneter Einsätze.
+                            Aktive und archivierte Werte inklusive zugeordneter
+                            Einsätze.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {degrees.data.length === 0 ? (
                             <div className="rounded-xl border border-dashed px-6 py-10 text-center">
                                 <p className="text-sm font-medium">
-                                    Keine Studiengänge für diese Auswahl gefunden.
+                                    Keine Studiengänge für diese Auswahl
+                                    gefunden.
                                 </p>
                             </div>
                         ) : (
@@ -212,14 +284,31 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <div className="flex items-center gap-2 text-sm font-medium">
                                                         <GraduationCap className="size-4 text-muted-foreground" />
-                                                        <span>{degree.name}</span>
+                                                        <span>
+                                                            {degree.name}
+                                                        </span>
                                                     </div>
-                                                    <Badge variant={degree.deletedAt ? 'outline' : 'secondary'}>
-                                                        {degree.deletedAt ? 'Archiviert' : 'Aktiv'}
+                                                    <Badge
+                                                        variant={
+                                                            degree.deletedAt
+                                                                ? 'outline'
+                                                                : 'secondary'
+                                                        }
+                                                    >
+                                                        {degree.deletedAt
+                                                            ? 'Archiviert'
+                                                            : 'Aktiv'}
                                                     </Badge>
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {degree.attendancesCount} Einsätze mit diesem Studiengang
+                                                    {degree.attendancesCount}{' '}
+                                                    Einsätze mit diesem
+                                                    Studiengang
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Fachbereich:{' '}
+                                                    {degree.faculty ??
+                                                        'Noch nicht zugeordnet'}
                                                 </p>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
@@ -228,7 +317,11 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                                                         <Button
                                                             type="button"
                                                             variant="outline"
-                                                            onClick={() => openEditDialog(degree)}
+                                                            onClick={() =>
+                                                                openEditDialog(
+                                                                    degree,
+                                                                )
+                                                            }
                                                         >
                                                             <PencilLine className="size-4" />
                                                             Bearbeiten
@@ -237,10 +330,15 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                                                             type="button"
                                                             variant="outline"
                                                             onClick={() =>
-                                                                router.visit(destroyDegree(degree.id), {
-                                                                    method: 'delete',
-                                                                    preserveScroll: true,
-                                                                })
+                                                                router.visit(
+                                                                    destroyDegree(
+                                                                        degree.id,
+                                                                    ),
+                                                                    {
+                                                                        method: 'delete',
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
                                                             }
                                                         >
                                                             <Archive className="size-4" />
@@ -253,10 +351,15 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                                                         type="button"
                                                         variant="outline"
                                                         onClick={() =>
-                                                            router.visit(restoreDegree(degree.id), {
-                                                                method: 'patch',
-                                                                preserveScroll: true,
-                                                            })
+                                                            router.visit(
+                                                                restoreDegree(
+                                                                    degree.id,
+                                                                ),
+                                                                {
+                                                                    method: 'patch',
+                                                                    preserveScroll: true,
+                                                                },
+                                                            )
                                                         }
                                                     >
                                                         <RotateCcw className="size-4" />
@@ -275,21 +378,35 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                                     <Button
                                         key={`${link.label}-${index}`}
                                         type="button"
-                                        variant={link.active ? 'default' : 'outline'}
+                                        variant={
+                                            link.active ? 'default' : 'outline'
+                                        }
                                         disabled={link.url === null}
                                         asChild={link.url !== null}
                                     >
                                         {link.url ? (
                                             <Link href={link.url}>
                                                 {link.label
-                                                    .replace('&laquo; Previous', 'Zurück')
-                                                    .replace('Next &raquo;', 'Weiter')}
+                                                    .replace(
+                                                        '&laquo; Previous',
+                                                        'Zurück',
+                                                    )
+                                                    .replace(
+                                                        'Next &raquo;',
+                                                        'Weiter',
+                                                    )}
                                             </Link>
                                         ) : (
                                             <span>
                                                 {link.label
-                                                    .replace('&laquo; Previous', 'Zurück')
-                                                    .replace('Next &raquo;', 'Weiter')}
+                                                    .replace(
+                                                        '&laquo; Previous',
+                                                        'Zurück',
+                                                    )
+                                                    .replace(
+                                                        'Next &raquo;',
+                                                        'Weiter',
+                                                    )}
                                             </span>
                                         )}
                                     </Button>
@@ -308,7 +425,8 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                     <DialogHeader>
                         <DialogTitle>Studiengang bearbeiten</DialogTitle>
                         <DialogDescription>
-                            Änderungen an der Bezeichnung werden in bestehenden Einsätzen mitgeführt.
+                            Änderungen an der Bezeichnung werden in bestehenden
+                            Einsätzen mitgeführt.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submitUpdate} className="space-y-5">
@@ -317,12 +435,45 @@ export default function AdminDegreesIndex({ degrees, filters }: Props) {
                             <Input
                                 id="edit-degree"
                                 value={editForm.data.name}
-                                onChange={(event) => editForm.setData('name', event.target.value)}
+                                onChange={(event) =>
+                                    editForm.setData('name', event.target.value)
+                                }
                             />
                             <InputError message={editForm.errors.name} />
                         </div>
+                        <div className="grid gap-2">
+                            <Label>Fachbereich</Label>
+                            <Select
+                                value={editForm.data.faculty_id}
+                                onValueChange={(value) =>
+                                    editForm.setData('faculty_id', value)
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Fachbereich auswählen" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {faculties.map((faculty) => (
+                                        <SelectItem
+                                            key={faculty.id}
+                                            value={faculty.id.toString()}
+                                        >
+                                            {faculty.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={editForm.errors.faculty_id} />
+                            <p className="text-xs text-muted-foreground">
+                                Bestehende Einträge werden bei einer Änderung
+                                mitgeführt.
+                            </p>
+                        </div>
                         <div className="flex flex-wrap gap-3">
-                            <Button type="submit" disabled={editForm.processing}>
+                            <Button
+                                type="submit"
+                                disabled={editForm.processing}
+                            >
                                 Änderungen speichern
                             </Button>
                             <Button

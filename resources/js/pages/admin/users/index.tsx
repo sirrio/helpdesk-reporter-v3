@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
 import { Mail, PencilLine, Plus, Search, UserRound, Users } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import {
     index as adminUsersIndex,
     store as storeAdminUser,
@@ -17,6 +18,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -25,7 +27,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -112,11 +113,14 @@ export default function AdminUsersIndex({ users, filters }: Props) {
 
     function applyFilters(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        router.visit(adminUsersIndex({ query: cleanRoleFilters(filterForm.data) }), {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.visit(
+            adminUsersIndex({ query: cleanRoleFilters(filterForm.data) }),
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     function resetFilters(): void {
@@ -193,6 +197,14 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                         <p className="text-sm text-muted-foreground">
                             Verwalte Tutor:innen, Moderator:innen und Admins.
                         </p>
+                        <p className="max-w-3xl text-xs text-muted-foreground">
+                            Moderator:innen können alle Einträge und Statistiken
+                            einsehen und Einträge korrigieren. Admins verwalten
+                            zusätzlich Benutzer:innen und Stammdaten.
+                            „Verifiziert“ bedeutet, dass die E-Mail-Adresse
+                            bestätigt wurde; administrativ angelegte Konten
+                            gelten direkt als bestätigt.
+                        </p>
                     </div>
                     <Dialog
                         open={isCreateDialogOpen}
@@ -215,39 +227,130 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             <form onSubmit={submitCreate} className="space-y-5">
                                 <div className="grid gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="create-name">Name</Label>
-                                        <Input id="create-name" value={createForm.data.name} onChange={(event) => createForm.setData('name', event.target.value)} />
-                                        <InputError message={createForm.errors.name} />
+                                        <Label htmlFor="create-name">
+                                            Name
+                                        </Label>
+                                        <Input
+                                            id="create-name"
+                                            value={createForm.data.name}
+                                            onChange={(event) =>
+                                                createForm.setData(
+                                                    'name',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={createForm.errors.name}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="create-email">E-Mail</Label>
-                                        <Input id="create-email" type="email" value={createForm.data.email} onChange={(event) => createForm.setData('email', event.target.value)} />
-                                        <InputError message={createForm.errors.email} />
+                                        <Label htmlFor="create-email">
+                                            E-Mail
+                                        </Label>
+                                        <Input
+                                            id="create-email"
+                                            type="email"
+                                            value={createForm.data.email}
+                                            onChange={(event) =>
+                                                createForm.setData(
+                                                    'email',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={createForm.errors.email}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="create-password">Passwort</Label>
-                                        <Input id="create-password" type="password" value={createForm.data.password} onChange={(event) => createForm.setData('password', event.target.value)} />
-                                        <InputError message={createForm.errors.password} />
+                                        <Label htmlFor="create-password">
+                                            Passwort
+                                        </Label>
+                                        <Input
+                                            id="create-password"
+                                            type="password"
+                                            value={createForm.data.password}
+                                            onChange={(event) =>
+                                                createForm.setData(
+                                                    'password',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={createForm.errors.password}
+                                        />
                                     </div>
                                 </div>
                                 <div className="grid gap-3">
                                     <Label>Rollen</Label>
                                     <label className="flex items-start gap-3 rounded-lg border p-3">
-                                        <Checkbox checked={createForm.data.isMod} onCheckedChange={(checked) => setCreateRoles(checked === true, checked === true ? createForm.data.isAdmin : false)} />
-                                        <span className="text-sm font-medium">Moderator:in</span>
+                                        <Checkbox
+                                            checked={createForm.data.isMod}
+                                            onCheckedChange={(checked) =>
+                                                setCreateRoles(
+                                                    checked === true,
+                                                    checked === true
+                                                        ? createForm.data
+                                                              .isAdmin
+                                                        : false,
+                                                )
+                                            }
+                                        />
+                                        <span>
+                                            <span className="block text-sm font-medium">
+                                                Moderator:in
+                                            </span>
+                                            <span className="block text-xs text-muted-foreground">
+                                                Darf alle Einträge und
+                                                Statistiken ansehen und
+                                                korrigieren.
+                                            </span>
+                                        </span>
                                     </label>
                                     <label className="flex items-start gap-3 rounded-lg border p-3">
-                                        <Checkbox checked={createForm.data.isAdmin} onCheckedChange={(checked) => setCreateRoles(checked === true ? true : createForm.data.isMod, checked === true)} />
-                                        <span className="text-sm font-medium">Admin</span>
+                                        <Checkbox
+                                            checked={createForm.data.isAdmin}
+                                            onCheckedChange={(checked) =>
+                                                setCreateRoles(
+                                                    checked === true
+                                                        ? true
+                                                        : createForm.data.isMod,
+                                                    checked === true,
+                                                )
+                                            }
+                                        />
+                                        <span className="text-sm font-medium">
+                                            Admin
+                                        </span>
                                     </label>
-                                    <InputError message={createForm.errors.isAdmin ?? createForm.errors.isMod} />
+                                    <InputError
+                                        message={
+                                            createForm.errors.isAdmin ??
+                                            createForm.errors.isMod
+                                        }
+                                    />
                                 </div>
                                 <div className="flex flex-wrap gap-3">
-                                    <Button type="submit" disabled={createForm.processing}>
-                                        {createForm.processing && <Spinner className="mr-2" />}
+                                    <Button
+                                        type="submit"
+                                        disabled={createForm.processing}
+                                    >
+                                        {createForm.processing && (
+                                            <Spinner className="mr-2" />
+                                        )}
                                         Benutzer speichern
                                     </Button>
-                                    <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Abbrechen</Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() =>
+                                            setIsCreateDialogOpen(false)
+                                        }
+                                    >
+                                        Abbrechen
+                                    </Button>
                                 </div>
                             </form>
                         </DialogContent>
@@ -261,7 +364,8 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             <CardTitle>Benutzer</CardTitle>
                         </div>
                         <CardDescription>
-                            Suche Accounts und passe Rollen oder Zugangsdaten an.
+                            Suche Accounts und passe Rollen oder Zugangsdaten
+                            an.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -377,11 +481,15 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                                 <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
                                                     <div className="flex items-center gap-2">
                                                         <Mail className="size-4" />
-                                                        <span>{user.email}</span>
+                                                        <span>
+                                                            {user.email}
+                                                        </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span>
-                                                            {user.attendancesCount}{' '}
+                                                            {
+                                                                user.attendancesCount
+                                                            }{' '}
                                                             Einsätze
                                                         </span>
                                                     </div>
@@ -485,7 +593,8 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                     }
                                 />
                                 <p className="text-sm text-muted-foreground">
-                                    Leer lassen, wenn es unverändert bleiben soll.
+                                    Leer lassen, wenn es unverändert bleiben
+                                    soll.
                                 </p>
                                 <InputError
                                     message={editForm.errors.password}
@@ -534,8 +643,13 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             />
                         </div>
                         <div className="flex flex-wrap gap-3">
-                            <Button type="submit" disabled={editForm.processing}>
-                                {editForm.processing && <Spinner className="mr-2" />}
+                            <Button
+                                type="submit"
+                                disabled={editForm.processing}
+                            >
+                                {editForm.processing && (
+                                    <Spinner className="mr-2" />
+                                )}
                                 Änderungen speichern
                             </Button>
                             <Button
