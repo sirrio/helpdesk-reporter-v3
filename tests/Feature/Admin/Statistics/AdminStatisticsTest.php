@@ -142,6 +142,14 @@ it('filters statistics by the unspecified degree', function () {
         'date' => '2026-04-12',
     ]);
     Attendance::factory()->create([
+        'degree' => 'keine angabe',
+        'date' => '2026-04-12',
+    ]);
+    Attendance::factory()->create([
+        'degree' => 'Keiné Angabe',
+        'date' => '2026-04-12',
+    ]);
+    Attendance::factory()->create([
         'degree' => 'Informatik',
         'date' => '2026-04-12',
     ]);

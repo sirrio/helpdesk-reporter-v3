@@ -74,9 +74,14 @@ class StoreAttendanceRequest extends FormRequest
                 $semester = Semester::withTrashed()
                     ->where('semester', $this->string('semester')->toString())
                     ->first();
-                $degree = Degree::withTrashed()
-                    ->where('name', $this->string('degree')->toString())
-                    ->first();
+                $degreeName = $this->string('degree')->toString();
+                $degree = $degreeName === Attendance::DEGREE_UNSPECIFIED
+                    ? null
+                    : Degree::withTrashed()
+                        ->whereRaw('HEX(name) = ?', [
+                            strtoupper(bin2hex($degreeName)),
+                        ])
+                        ->first();
                 $assignedFaculty = $degree?->faculty_id === null
                     ? null
                     : Faculty::withTrashed()->find($degree->faculty_id);

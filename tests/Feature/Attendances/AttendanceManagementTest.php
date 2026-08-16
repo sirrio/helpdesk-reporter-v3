@@ -122,6 +122,8 @@ it('filters the tutors attendances by the unspecified degree', function () {
     Attendance::factory()->for($user)->create([
         'degree' => Attendance::DEGREE_UNSPECIFIED,
     ]);
+    Attendance::factory()->for($user)->create(['degree' => 'keine angabe']);
+    Attendance::factory()->for($user)->create(['degree' => 'Keiné Angabe']);
     Attendance::factory()->for($user)->create(['degree' => 'Informatik']);
     Attendance::factory()->for($otherUser)->create([
         'degree' => Attendance::DEGREE_UNSPECIFIED,

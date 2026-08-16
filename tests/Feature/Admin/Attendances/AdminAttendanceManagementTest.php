@@ -109,6 +109,8 @@ it('filters admin attendances by the unspecified degree', function () {
     Attendance::factory()->create([
         'degree' => Attendance::DEGREE_UNSPECIFIED,
     ]);
+    Attendance::factory()->create(['degree' => 'keine angabe']);
+    Attendance::factory()->create(['degree' => 'Keiné Angabe']);
     Attendance::factory()->create(['degree' => 'Informatik']);
 
     $this->actingAs($admin)

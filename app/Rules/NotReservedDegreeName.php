@@ -5,7 +5,6 @@ namespace App\Rules;
 use App\Models\Attendance;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Support\Str;
 use Illuminate\Translation\PotentiallyTranslatedString;
 
 class NotReservedDegreeName implements ValidationRule
@@ -21,18 +20,7 @@ class NotReservedDegreeName implements ValidationRule
             return;
         }
 
-        $normalizedName = Str::of($value)
-            ->squish()
-            ->lower()
-            ->ascii()
-            ->toString();
-        $reservedName = Str::of(Attendance::DEGREE_UNSPECIFIED)
-            ->squish()
-            ->lower()
-            ->ascii()
-            ->toString();
-
-        if ($normalizedName === $reservedName) {
+        if (Attendance::isUnspecifiedDegreeNameEquivalent($value)) {
             $fail(__('Dieser Name ist für die Auswahl „Keine Angabe“ reserviert.'));
         }
     }

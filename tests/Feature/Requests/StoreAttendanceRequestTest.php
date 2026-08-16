@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Attendance;
 use App\Models\Degree;
 use App\Models\Faculty;
 use App\Models\Semester;
@@ -165,6 +166,33 @@ it('allows an unspecified degree with any active faculty', function () {
         'user_id' => $this->user->id,
         'degree' => 'Keine Angabe',
         'faculty' => 'Ingenieurwissenschaften',
+    ]);
+});
+
+it('ignores an archived legacy degree collision for the unspecified selection', function () {
+    $assignedFaculty = Faculty::query()
+        ->where('name', 'Naturwissenschaften')
+        ->firstOrFail();
+    $selectedFaculty = Faculty::factory()->create([
+        'name' => 'Ingenieurwissenschaften',
+    ]);
+    $legacyDegree = Degree::factory()->create([
+        'name' => Attendance::DEGREE_UNSPECIFIED,
+        'faculty_id' => $assignedFaculty->id,
+    ]);
+    $legacyDegree->delete();
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'degree' => Attendance::DEGREE_UNSPECIFIED,
+            'faculty' => $selectedFaculty->name,
+        ]))
+        ->assertRedirect(route('attendances.index'));
+
+    $this->assertDatabaseHas('attendances', [
+        'user_id' => $this->user->id,
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+        'faculty' => $selectedFaculty->name,
     ]);
 });
 
