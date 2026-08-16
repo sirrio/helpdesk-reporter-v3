@@ -103,6 +103,25 @@ it('allows moderators to open the admin attendance page and update entries', fun
     expect($attendance->refresh()->visitors)->toBe(2);
 });
 
+it('filters admin attendances by the unspecified degree', function () {
+    $admin = User::factory()->admin()->create();
+
+    Attendance::factory()->create([
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+    ]);
+    Attendance::factory()->create(['degree' => 'Informatik']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.attendances.index', [
+            'degree' => Attendance::DEGREE_UNSPECIFIED,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.degree', Attendance::DEGREE_UNSPECIFIED)
+            ->has('attendances.data', 1)
+            ->where('attendances.data.0.degree', Attendance::DEGREE_UNSPECIFIED));
+});
+
 it('forbids tutors from opening the admin attendance page', function () {
     $user = User::factory()->create();
 

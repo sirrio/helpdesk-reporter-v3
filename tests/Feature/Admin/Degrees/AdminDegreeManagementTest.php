@@ -10,17 +10,37 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-it('reserves the unspecified attendance label', function () {
+it('reserves collation-equivalent unspecified attendance labels', function (string $reservedName) {
     $admin = User::factory()->admin()->create();
     $faculty = Faculty::factory()->create();
+    $degree = Degree::factory()->create([
+        'name' => 'Informatik',
+        'faculty_id' => $faculty->id,
+    ]);
 
     $this->actingAs($admin)
         ->post(route('admin.degrees.store'), [
-            'name' => Attendance::DEGREE_UNSPECIFIED,
+            'name' => $reservedName,
             'faculty_id' => $faculty->id,
         ])
         ->assertSessionHasErrors('name');
-});
+
+    $this->actingAs($admin)
+        ->put(route('admin.degrees.update', $degree), [
+            'name' => $reservedName,
+            'faculty_id' => $faculty->id,
+        ])
+        ->assertSessionHasErrors('name');
+
+    expect($degree->refresh()->name)->toBe('Informatik');
+})->with([
+    'canonical' => Attendance::DEGREE_UNSPECIFIED,
+    'lowercase' => 'keine angabe',
+    'uppercase' => 'KEINE ANGABE',
+    'surrounding whitespace' => '  Keine Angabe  ',
+    'unicode whitespace' => "Keine\u{00A0}Angabe",
+    'accent-insensitive variant' => 'Keiné Angabe',
+]);
 
 it('shows the degree management page to admins', function () {
     $admin = User::factory()->admin()->create();

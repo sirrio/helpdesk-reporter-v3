@@ -115,6 +115,33 @@ it('stores a new attendance entry for the authenticated tutor', function () {
     ]);
 });
 
+it('filters the tutors attendances by the unspecified degree', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    Attendance::factory()->for($user)->create([
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+    ]);
+    Attendance::factory()->for($user)->create(['degree' => 'Informatik']);
+    Attendance::factory()->for($otherUser)->create([
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+    ]);
+    $deletedAttendance = Attendance::factory()->for($user)->create([
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+    ]);
+    $deletedAttendance->delete();
+
+    $this->actingAs($user)
+        ->get(route('attendances.index', [
+            'degree' => Attendance::DEGREE_UNSPECIFIED,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.degree', Attendance::DEGREE_UNSPECIFIED)
+            ->has('attendances.data', 1)
+            ->where('attendances.data.0.degree', Attendance::DEGREE_UNSPECIFIED));
+});
+
 it('allows a tutor to update their own attendance entry', function () {
     $user = User::factory()->create();
     $semester = Semester::factory()->create([
