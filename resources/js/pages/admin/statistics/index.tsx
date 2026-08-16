@@ -411,7 +411,7 @@ export default function AdminStatisticsIndex({
                         </h1>
                         <p className="text-sm text-muted-foreground">
                             Verdichte alle Helpdesk-Einsätze zu Wochen-,
-                            Fachbereichs-, Studiengang- und Themenstatistiken.
+                            Fachbereichs-, Studiengangs- und Themenstatistiken.
                         </p>
                     </div>
                     <div className="flex gap-2 print:hidden">
@@ -931,9 +931,7 @@ export default function AdminStatisticsIndex({
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <Layers3 className="size-4 text-muted-foreground" />
-                                <CardTitle>
-                                    Beratungen nach Fachbereich
-                                </CardTitle>
+                                <CardTitle>Verteilung Fachbereich</CardTitle>
                             </div>
                             <CardDescription>
                                 Beratungen nach Fachbereich.
@@ -975,9 +973,7 @@ export default function AdminStatisticsIndex({
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <GraduationCap className="size-4 text-muted-foreground" />
-                                <CardTitle>
-                                    Beratungen nach Studiengang
-                                </CardTitle>
+                                <CardTitle>Verteilung Studiengang</CardTitle>
                             </div>
                             <CardDescription>
                                 Beratungen nach Studiengang.
@@ -1019,7 +1015,7 @@ export default function AdminStatisticsIndex({
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <School className="size-4 text-muted-foreground" />
-                                <CardTitle>Beratungen nach Thema</CardTitle>
+                                <CardTitle>Verteilung Thema</CardTitle>
                             </div>
                             <CardDescription>
                                 Beratungen nach Thema.

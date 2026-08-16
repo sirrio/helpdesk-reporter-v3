@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Attendance;
 use App\Models\Degree;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -32,6 +33,7 @@ class UpdateDegreeRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
+                Rule::notIn([Attendance::DEGREE_UNSPECIFIED]),
                 Rule::unique('degrees', 'name')->ignore($degree),
             ],
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')->whereNull('deleted_at')],

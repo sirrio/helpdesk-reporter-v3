@@ -4,6 +4,7 @@ use App\Models\Degree;
 use App\Models\Faculty;
 use App\Models\Semester;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -64,6 +65,14 @@ it('rejects an invalid time format', function () {
     $response->assertSessionHasErrors(['startTime', 'endTime']);
 });
 
+it('requires an ISO date with a four digit year', function () {
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'date' => '12.04.26',
+        ]))
+        ->assertSessionHasErrors('date');
+});
+
 it('rejects a non-existent semester', function () {
     $response = $this->actingAs($this->user)->post(route('attendances.store'), validAttendancePayload([
         'semester' => 'SS 1900',
@@ -116,6 +125,47 @@ it('rejects dates outside the semester and in the future', function () {
             'date' => now()->addDay()->toDateString(),
         ]))
         ->assertSessionHasErrors('date');
+});
+
+it('rejects an end time later than now on the current day', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-04-12 10:30:00', 'Europe/Berlin'));
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'date' => '2026-04-12',
+            'startTime' => '10:00',
+            'endTime' => '11:00',
+        ]))
+        ->assertSessionHasErrors('endTime');
+});
+
+it('accepts an elapsed time slot on the current day', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-04-12 10:30:00', 'Europe/Berlin'));
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'date' => '2026-04-12',
+            'startTime' => '09:00',
+            'endTime' => '10:00',
+        ]))
+        ->assertRedirect(route('attendances.index'));
+});
+
+it('allows an unspecified degree with any active faculty', function () {
+    Faculty::factory()->create(['name' => 'Ingenieurwissenschaften']);
+
+    $this->actingAs($this->user)
+        ->post(route('attendances.store'), validAttendancePayload([
+            'degree' => 'Keine Angabe',
+            'faculty' => 'Ingenieurwissenschaften',
+        ]))
+        ->assertRedirect(route('attendances.index'));
+
+    $this->assertDatabaseHas('attendances', [
+        'user_id' => $this->user->id,
+        'degree' => 'Keine Angabe',
+        'faculty' => 'Ingenieurwissenschaften',
+    ]);
 });
 
 it('rejects a faculty that is not assigned to the degree', function () {

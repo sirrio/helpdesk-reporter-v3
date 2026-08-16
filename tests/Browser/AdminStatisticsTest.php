@@ -16,6 +16,10 @@ it('shows the statistics page with export button', function () {
 
     $page->assertSee('Statistik')
         ->assertSee('Als PDF exportieren')
+        ->assertSee('Studiengangs- und Themenstatistiken')
+        ->assertSee('Verteilung Fachbereich')
+        ->assertSee('Verteilung Studiengang')
+        ->assertSee('Verteilung Thema')
         ->assertNoJavaScriptErrors();
 });
 

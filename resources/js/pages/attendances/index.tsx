@@ -10,6 +10,7 @@ import {
     PencilLine,
     Plus,
     School,
+    Trash2,
     Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -36,6 +37,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -93,6 +95,23 @@ type Props = {
     canCreateEntries: boolean;
 };
 
+function currentBerlinDate(): string {
+    const dateParts = new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'Europe/Berlin',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    })
+        .formatToParts(new Date())
+        .reduce<Record<string, string>>((parts, part) => {
+            parts[part.type] = part.value;
+
+            return parts;
+        }, {});
+
+    return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+}
+
 export default function AttendancesIndex({
     attendances,
     filters,
@@ -105,8 +124,10 @@ export default function AttendancesIndex({
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [editingAttendance, setEditingAttendance] =
         useState<AttendanceItem | null>(null);
+    const [deletingAttendance, setDeletingAttendance] =
+        useState<AttendanceItem | null>(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = currentBerlinDate();
     const defaultSemester =
         formOptions.semesters.find((semester) => {
             const range = formOptions.semesterRanges[semester];
@@ -152,6 +173,7 @@ export default function AttendancesIndex({
         online: false,
         visitors: 1,
     });
+    const deleteForm = useForm({});
     const filterForm = useForm<Filters>(filters);
 
     function submitEntry(event: FormEvent<HTMLFormElement>): void {
@@ -266,6 +288,17 @@ export default function AttendancesIndex({
         editForm.submit(AttendanceController.update(editingAttendance.id), {
             preserveScroll: true,
             onSuccess: () => setEditingAttendance(null),
+        });
+    }
+
+    function deleteAttendance(): void {
+        if (!deletingAttendance) {
+            return;
+        }
+
+        deleteForm.submit(AttendanceController.destroy(deletingAttendance.id), {
+            preserveScroll: true,
+            onSuccess: () => setDeletingAttendance(null),
         });
     }
 
@@ -964,6 +997,19 @@ export default function AttendancesIndex({
                                                     <PencilLine className="size-3.5" />
                                                     Bearbeiten
                                                 </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setDeletingAttendance(
+                                                            attendance,
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                    Löschen
+                                                </Button>
                                                 {attendance.topics.map(
                                                     (topic) => (
                                                         <Badge
@@ -1209,6 +1255,42 @@ export default function AttendancesIndex({
                             </Button>
                         </div>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={deletingAttendance !== null}
+                onOpenChange={(open) => !open && setDeletingAttendance(null)}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Eintrag löschen?</DialogTitle>
+                        <DialogDescription>
+                            Die Beratung vom {deletingAttendance?.date} um{' '}
+                            {deletingAttendance?.startTime} Uhr wird aus den
+                            Listen und Statistiken entfernt.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDeletingAttendance(null)}
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={deleteForm.processing}
+                            onClick={deleteAttendance}
+                        >
+                            {deleteForm.processing && (
+                                <Spinner className="mr-2" />
+                            )}
+                            Eintrag löschen
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>

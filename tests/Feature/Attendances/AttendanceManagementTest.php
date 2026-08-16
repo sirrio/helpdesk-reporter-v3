@@ -64,7 +64,12 @@ it('shows only the authenticated tutors attendances and supports filtering', fun
             ->has('attendances.data', 1)
             ->where('attendances.data.0.semester', 'WS 2025/2026')
             ->where('attendances.data.0.online', true)
-            ->where('filters.topic', 'programming'));
+            ->where('filters.topic', 'programming')
+            ->where('formOptions.degrees.1', Attendance::DEGREE_UNSPECIFIED)
+            ->where(
+                'formOptions.degreeFaculties.'.Attendance::DEGREE_UNSPECIFIED,
+                null,
+            ));
 });
 
 it('stores a new attendance entry for the authenticated tutor', function () {
@@ -206,4 +211,25 @@ it('forbids tutors from updating another tutors attendance entry', function () {
     $this->actingAs(User::factory()->create())
         ->put(route('attendances.update', $attendance), [])
         ->assertForbidden();
+});
+
+it('allows a tutor to delete their own attendance entry', function () {
+    $user = User::factory()->create();
+    $attendance = Attendance::factory()->for($user)->create();
+
+    $this->actingAs($user)
+        ->delete(route('attendances.destroy', $attendance))
+        ->assertRedirect();
+
+    $this->assertSoftDeleted($attendance);
+});
+
+it('forbids tutors from deleting another tutors attendance entry', function () {
+    $attendance = Attendance::factory()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->delete(route('attendances.destroy', $attendance))
+        ->assertForbidden();
+
+    $this->assertNotSoftDeleted($attendance);
 });

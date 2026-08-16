@@ -34,6 +34,8 @@ class Attendance extends Model
     /** @use HasFactory<AttendanceFactory> */
     use HasFactory, SoftDeletes;
 
+    public const DEGREE_UNSPECIFIED = 'Keine Angabe';
+
     /**
      * @var array<string, string>
      */

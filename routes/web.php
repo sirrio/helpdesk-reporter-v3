@@ -22,6 +22,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
     Route::put('attendances/{attendance}', [AttendanceController::class, 'update'])
         ->name('attendances.update');
+    Route::delete('attendances/{attendance}', [AttendanceController::class, 'destroy'])
+        ->name('attendances.destroy');
     Route::get('admin/attendances', [AttendanceController::class, 'adminIndex'])
         ->middleware('can:view-admin-attendances')
         ->name('admin.attendances.index');

@@ -10,6 +10,18 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('reserves the unspecified attendance label', function () {
+    $admin = User::factory()->admin()->create();
+    $faculty = Faculty::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.degrees.store'), [
+            'name' => Attendance::DEGREE_UNSPECIFIED,
+            'faculty_id' => $faculty->id,
+        ])
+        ->assertSessionHasErrors('name');
+});
+
 it('shows the degree management page to admins', function () {
     $admin = User::factory()->admin()->create();
     Degree::factory()->create(['name' => 'Informatik']);

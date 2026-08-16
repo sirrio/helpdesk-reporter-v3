@@ -38,11 +38,6 @@ class UpdateAttendanceRequest extends StoreAttendanceRequest
             'semester',
             $attendance->semester,
         );
-        $rules['degree'] = $this->activeOrCurrentExistsRule(
-            'degrees',
-            'name',
-            $attendance->degree,
-        );
         $rules['faculty'] = $this->activeOrCurrentExistsRule(
             'faculties',
             'name',
@@ -50,6 +45,23 @@ class UpdateAttendanceRequest extends StoreAttendanceRequest
         );
 
         return $rules;
+    }
+
+    /**
+     * Allow an attendance to retain an archived historical degree value.
+     *
+     * @return array<int, string>
+     */
+    protected function allowedDegreeValues(): array
+    {
+        $values = parent::allowedDegreeValues();
+        $attendance = $this->route('attendance');
+
+        if ($attendance instanceof Attendance) {
+            $values[] = $attendance->degree;
+        }
+
+        return array_values(array_unique($values));
     }
 
     /**

@@ -110,3 +110,13 @@ it('forbids tutors from opening the admin attendance page', function () {
         ->get(route('admin.attendances.index'))
         ->assertForbidden();
 });
+
+it('allows administrators to delete attendance entries', function () {
+    $attendance = Attendance::factory()->create();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->delete(route('attendances.destroy', $attendance))
+        ->assertRedirect();
+
+    $this->assertSoftDeleted($attendance);
+});
