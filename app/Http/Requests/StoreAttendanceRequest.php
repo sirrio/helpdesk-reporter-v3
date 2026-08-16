@@ -14,6 +14,8 @@ use Illuminate\Validation\Validator;
 
 class StoreAttendanceRequest extends FormRequest
 {
+    private const ENTRY_TIMEZONE = 'Europe/Berlin';
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -35,13 +37,13 @@ class StoreAttendanceRequest extends FormRequest
                 'string',
                 Rule::exists('semesters', 'semester')->whereNull('deleted_at'),
             ],
-            'date' => ['required', 'date'],
+            'date' => ['required', Rule::date()->format('Y-m-d')],
             'startTime' => ['required', 'date_format:H:i'],
             'endTime' => ['required', 'date_format:H:i', 'after:startTime'],
             'degree' => [
                 'required',
                 'string',
-                Rule::exists('degrees', 'name')->whereNull('deleted_at'),
+                Rule::in($this->allowedDegreeValues()),
             ],
             'faculty' => [
                 'required',
@@ -72,12 +74,18 @@ class StoreAttendanceRequest extends FormRequest
                 $semester = Semester::withTrashed()
                     ->where('semester', $this->string('semester')->toString())
                     ->first();
-                $degree = Degree::withTrashed()
-                    ->where('name', $this->string('degree')->toString())
-                    ->first();
+                $degreeName = $this->string('degree')->toString();
+                $degree = $degreeName === Attendance::DEGREE_UNSPECIFIED
+                    ? null
+                    : Degree::withTrashed()
+                        ->whereRaw('HEX(name) = ?', [
+                            strtoupper(bin2hex($degreeName)),
+                        ])
+                        ->first();
                 $assignedFaculty = $degree?->faculty_id === null
                     ? null
                     : Faculty::withTrashed()->find($degree->faculty_id);
+                $currentDateTime = CarbonImmutable::now(self::ENTRY_TIMEZONE);
 
                 if ($semester !== null && ! $date->betweenIncluded($semester->start, $semester->end)) {
                     $validator->errors()->add(
@@ -86,10 +94,26 @@ class StoreAttendanceRequest extends FormRequest
                     );
                 }
 
-                if ($date->isFuture()) {
+                if ($date->toDateString() > $currentDateTime->toDateString()) {
                     $validator->errors()->add(
                         'date',
                         __('Zukünftige Beratungen können nicht erfasst werden.'),
+                    );
+                }
+
+                $endDateTime = CarbonImmutable::createFromFormat(
+                    'Y-m-d H:i',
+                    $date->toDateString().' '.$this->string('endTime')->toString(),
+                    self::ENTRY_TIMEZONE,
+                );
+
+                if (
+                    $date->toDateString() === $currentDateTime->toDateString()
+                    && $endDateTime->isAfter($currentDateTime)
+                ) {
+                    $validator->errors()->add(
+                        'endTime',
+                        __('Die Endzeit darf nicht in der Zukunft liegen.'),
                     );
                 }
 
@@ -129,5 +153,19 @@ class StoreAttendanceRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /**
+     * Get the selectable degree values, including an intentionally unspecified degree.
+     *
+     * @return array<int, string>
+     */
+    protected function allowedDegreeValues(): array
+    {
+        return Degree::query()
+            ->orderBy('name')
+            ->pluck('name')
+            ->push(Attendance::DEGREE_UNSPECIFIED)
+            ->all();
     }
 }

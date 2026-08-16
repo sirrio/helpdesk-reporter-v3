@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Degree;
+use App\Rules\NotReservedDegreeName;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,6 +33,7 @@ class UpdateDegreeRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
+                new NotReservedDegreeName,
                 Rule::unique('degrees', 'name')->ignore($degree),
             ],
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')->whereNull('deleted_at')],

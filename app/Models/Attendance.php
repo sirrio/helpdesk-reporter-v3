@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'user_id',
@@ -33,6 +34,8 @@ class Attendance extends Model
 {
     /** @use HasFactory<AttendanceFactory> */
     use HasFactory, SoftDeletes;
+
+    public const DEGREE_UNSPECIFIED = 'Keine Angabe';
 
     /**
      * @var array<string, string>
@@ -69,7 +72,8 @@ class Attendance extends Model
      */
     public function degreeEntry(): BelongsTo
     {
-        return $this->belongsTo(Degree::class, 'degree', 'name');
+        return $this->belongsTo(Degree::class, 'degree', 'name')
+            ->where('degrees.name', '<>', self::DEGREE_UNSPECIFIED);
     }
 
     /**
@@ -94,7 +98,19 @@ class Attendance extends Model
             )
             ->when(
                 filled($filters['degree'] ?? null),
-                fn (Builder $builder) => $builder->where('degree', $filters['degree']),
+                function (Builder $builder) use ($filters): void {
+                    $degree = (string) $filters['degree'];
+
+                    if (self::isUnspecifiedDegreeNameEquivalent($degree)) {
+                        $builder->whereRaw('HEX(degree) = ?', [
+                            strtoupper(bin2hex($degree)),
+                        ]);
+
+                        return;
+                    }
+
+                    $builder->where('degree', $degree);
+                },
             )
             ->when(
                 filled($filters['faculty'] ?? null),
@@ -126,6 +142,20 @@ class Attendance extends Model
     public static function topicOptions(): array
     {
         return self::TOPIC_OPTIONS;
+    }
+
+    /**
+     * Determine whether a degree name collides with the synthetic unspecified option.
+     */
+    public static function isUnspecifiedDegreeNameEquivalent(string $degree): bool
+    {
+        $normalize = fn (string $value): string => Str::of($value)
+            ->squish()
+            ->lower()
+            ->ascii()
+            ->toString();
+
+        return $normalize($degree) === $normalize(self::DEGREE_UNSPECIFIED);
     }
 
     /**

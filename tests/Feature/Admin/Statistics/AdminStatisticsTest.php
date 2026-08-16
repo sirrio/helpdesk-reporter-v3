@@ -134,6 +134,38 @@ it('filters statistics by tutor', function () {
             ->where('stats.topics.0.label', 'Programmierung'));
 });
 
+it('filters statistics by the unspecified degree', function () {
+    $admin = User::factory()->admin()->create();
+
+    Attendance::factory()->create([
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+        'date' => '2026-04-12',
+    ]);
+    Attendance::factory()->create([
+        'degree' => 'keine angabe',
+        'date' => '2026-04-12',
+    ]);
+    Attendance::factory()->create([
+        'degree' => 'Keiné Angabe',
+        'date' => '2026-04-12',
+    ]);
+    Attendance::factory()->create([
+        'degree' => 'Informatik',
+        'date' => '2026-04-12',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.statistics.index', [
+            'degree' => Attendance::DEGREE_UNSPECIFIED,
+            'week' => '2026-04-06',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.degree', Attendance::DEGREE_UNSPECIFIED)
+            ->where('stats.totals.entries', 1)
+            ->where('stats.degrees.0.label', Attendance::DEGREE_UNSPECIFIED));
+});
+
 it('forbids non admins from opening the statistics page', function () {
     $user = User::factory()->create();
 

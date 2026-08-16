@@ -38,6 +38,7 @@ it('opens the create attendance dialog', function () {
     $page->click('button:has-text("Neuer Eintrag")')
         ->assertSee('Neuen Eintrag erstellen')
         ->assertSee('Anzahl Besucher:innen')
+        ->assertPresent('input#date[type="date"]')
         ->assertNoJavaScriptErrors();
 });
 
@@ -91,10 +92,8 @@ it('opens and saves the edit dialog for an existing entry', function () {
 
     $page->click('button:has-text("Bearbeiten")')
         ->assertSee('Eintrag bearbeiten')
-        ->keys('input#edit-date', ['End', 'Backspace'])
-        ->assertValue('input#edit-date', '12.04.202')
-        ->typeSlowly('input#edit-date', '6')
-        ->assertValue('input#edit-date', '12.04.2026')
+        ->assertPresent('input#edit-date[type="date"]')
+        ->assertValue('input#edit-date', '2026-04-12')
         ->fill('input#edit-visitors', '6')
         ->click('button:has-text("Änderungen speichern")')
         ->assertNoJavaScriptErrors();
@@ -103,4 +102,17 @@ it('opens and saves the edit dialog for an existing entry', function () {
         'user_id' => $this->user->id,
         'visitors' => 6,
     ]);
+});
+
+it('deletes an existing attendance entry after confirmation', function () {
+    $attendance = Attendance::factory()->for($this->user)->create();
+
+    $page = visit('/attendances');
+
+    $page->click('button:has-text("Löschen")')
+        ->assertSee('Eintrag löschen?')
+        ->click('button:has-text("Eintrag löschen")')
+        ->assertNoJavaScriptErrors();
+
+    $this->assertSoftDeleted($attendance);
 });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AdminAttendanceIndexRequest;
 use App\Http\Requests\AttendanceIndexRequest;
+use App\Http\Requests\DestroyAttendanceRequest;
 use App\Http\Requests\StoreAttendanceRequest;
 use App\Http\Requests\UpdateAttendanceRequest;
 use App\Models\Attendance;
@@ -144,6 +145,21 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Soft delete an attendance entry owned by the tutor or managed by staff.
+     */
+    public function destroy(DestroyAttendanceRequest $request, Attendance $attendance): RedirectResponse
+    {
+        $attendance->delete();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Helpdesk-Eintrag gelöscht.'),
+        ]);
+
+        return back();
+    }
+
+    /**
      * Build persisted attendance attributes from a validated form payload.
      *
      * @param  array<string, mixed>  $validated
@@ -202,6 +218,7 @@ class AttendanceController extends Controller
         $degrees = Degree::query()
             ->orderBy('name')
             ->pluck('name')
+            ->push(Attendance::DEGREE_UNSPECIFIED)
             ->all();
         $faculties = Faculty::query()
             ->orderBy('name')
@@ -230,6 +247,7 @@ class AttendanceController extends Controller
                     ->mapWithKeys(fn (Degree $degree) => [
                         $degree->name => $degree->faculty?->name,
                     ])
+                    ->put(Attendance::DEGREE_UNSPECIFIED, null)
                     ->all(),
                 'topics' => collect(Attendance::topicOptions())
                     ->map(fn (string $label, string $value) => [

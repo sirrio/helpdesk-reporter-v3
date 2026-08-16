@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NotReservedDegreeName;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,7 +25,13 @@ class StoreDegreeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('degrees', 'name')],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                new NotReservedDegreeName,
+                Rule::unique('degrees', 'name'),
+            ],
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')->whereNull('deleted_at')],
         ];
     }

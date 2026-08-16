@@ -37,3 +37,20 @@ it('resolves attendance relations across user and reference tables', function ()
     expect($degree->attendances)->toHaveCount(1);
     expect($faculty->attendances)->toHaveCount(1);
 });
+
+it('does not resolve the synthetic unspecified degree to a real degree record', function () {
+    Degree::factory()->create([
+        'name' => Attendance::DEGREE_UNSPECIFIED,
+    ]);
+    $attendance = Attendance::factory()->create([
+        'degree' => Attendance::DEGREE_UNSPECIFIED,
+    ]);
+
+    expect($attendance->degreeEntry)->toBeNull();
+    expect(
+        Attendance::query()
+            ->with('degreeEntry')
+            ->findOrFail($attendance->id)
+            ->degreeEntry,
+    )->toBeNull();
+});
