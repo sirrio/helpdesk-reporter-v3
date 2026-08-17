@@ -27,7 +27,8 @@ class AdminUserController extends Controller
             'status',
         ]);
         $systemSettings = SystemSetting::current();
-        $anonymizationCutoff = now()->subMonthsNoOverflow($systemSettings->user_anonymization_months);
+        $anonymizationMonths = $systemSettings->anonymizationMonths();
+        $anonymizationCutoff = now()->subMonthsNoOverflow($anonymizationMonths);
 
         $users = User::query()
             ->withTrashed()
@@ -98,7 +99,7 @@ class AdminUserController extends Controller
                 'status' => $filters['status'] ?? '',
             ],
             'automation' => [
-                'anonymizationMonths' => $systemSettings->user_anonymization_months,
+                'anonymizationMonths' => $anonymizationMonths,
                 'pendingAnonymizationCount' => User::onlyTrashed()
                     ->whereNull('anonymized_at')
                     ->where('deleted_at', '<=', $anonymizationCutoff)

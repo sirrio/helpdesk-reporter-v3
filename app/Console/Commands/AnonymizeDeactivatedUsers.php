@@ -20,7 +20,7 @@ class AnonymizeDeactivatedUsers extends Command
     public function handle(): int
     {
         $settings = SystemSetting::current();
-        $cutoff = now()->subMonthsNoOverflow($settings->user_anonymization_months);
+        $cutoff = now()->subMonthsNoOverflow($settings->anonymizationMonths());
         $anonymizedUsers = 0;
 
         User::onlyTrashed()

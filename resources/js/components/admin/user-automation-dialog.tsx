@@ -31,7 +31,7 @@ type AutomationCheck = {
 };
 
 export type UserAutomation = {
-    anonymizationMonths: number;
+    anonymizationMonths: number | null;
     pendingAnonymizationCount: number;
     scheduler: AutomationHealth;
     queue: AutomationHealth & { connection: string };
@@ -100,7 +100,7 @@ export function UserAutomationDialog({
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const settingsForm = useForm({
-        anonymizationMonths: automation.anonymizationMonths.toString(),
+        anonymizationMonths: String(automation.anonymizationMonths ?? 12),
     });
     const checkForm = useForm({});
     const isHealthy =

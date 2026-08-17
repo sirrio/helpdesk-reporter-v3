@@ -13,6 +13,15 @@ class SystemSetting extends Model
     public const HEARTBEAT_GRACE_MINUTES = 5;
 
     /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'user_anonymization_months' => self::DEFAULT_USER_ANONYMIZATION_MONTHS,
+    ];
+
+    /**
      * Get the singleton system settings record.
      */
     public static function current(): self
@@ -21,6 +30,16 @@ class SystemSetting extends Model
             ['id' => 1],
             ['user_anonymization_months' => self::DEFAULT_USER_ANONYMIZATION_MONTHS],
         );
+    }
+
+    /**
+     * Get a safe anonymization period for legacy or incomplete settings rows.
+     */
+    public function anonymizationMonths(): int
+    {
+        $months = (int) ($this->user_anonymization_months ?? self::DEFAULT_USER_ANONYMIZATION_MONTHS);
+
+        return min(120, max(1, $months));
     }
 
     /**

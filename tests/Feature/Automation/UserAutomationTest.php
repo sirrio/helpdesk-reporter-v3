@@ -13,6 +13,13 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('uses a safe default for an incomplete legacy settings row', function () {
+    $settings = new SystemSetting;
+    $settings->forceFill(['user_anonymization_months' => null]);
+
+    expect($settings->anonymizationMonths())->toBe(12);
+});
+
 it('allows admins to configure the anonymization period', function () {
     $admin = User::factory()->admin()->create();
 
