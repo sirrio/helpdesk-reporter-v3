@@ -4,9 +4,8 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
-class AdminUserIndexRequest extends FormRequest
+class UpdateUserAutomationSettingsRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -19,14 +18,12 @@ class AdminUserIndexRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, ValidationRule|string>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'search' => ['nullable', 'string', 'max:255'],
-            'role' => ['nullable', 'string', Rule::in(['admin', 'mod', 'tutor'])],
-            'status' => ['nullable', 'string', Rule::in(['active', 'deactivated', 'anonymized'])],
+            'anonymizationMonths' => ['required', 'integer', 'min:1', 'max:120'],
         ];
     }
 }

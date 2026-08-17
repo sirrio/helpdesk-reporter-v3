@@ -1,12 +1,25 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Mail, PencilLine, Plus, Search, UserRound, Users } from 'lucide-react';
+import {
+    Mail,
+    PencilLine,
+    Plus,
+    RotateCcw,
+    Search,
+    UserRound,
+    Users,
+    UserX,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
+    destroy as destroyAdminUser,
     index as adminUsersIndex,
+    restore as restoreAdminUser,
     store as storeAdminUser,
     update as updateAdminUser,
 } from '@/actions/App/Http/Controllers/AdminUserController';
+import { UserAutomationDialog } from '@/components/admin/user-automation-dialog';
+import type { UserAutomation } from '@/components/admin/user-automation-dialog';
 import InputError from '@/components/input-error';
 import { PaginationLinks } from '@/components/pagination-links';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +36,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -50,13 +64,16 @@ type ManagedUser = {
     createdAt: string | null;
     attendancesCount: number;
     isCurrentUser: boolean;
+    deletedAt: string | null;
+    anonymizedAt: string | null;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
-type Filters = { search: string; role: string };
+type Filters = { search: string; role: string; status: string };
 type Props = {
     users: { data: ManagedUser[]; links: PaginationLink[] };
     filters: Filters;
+    automation: UserAutomation;
 };
 
 const roleOptions = [
@@ -66,8 +83,19 @@ const roleOptions = [
     { value: 'tutor', label: 'Tutor:innen' },
 ];
 
-function cleanRoleFilters(filters: Filters): Record<string, string> {
-    return cleanFilters({ search: filters.search, role: filters.role });
+const statusOptions = [
+    { value: FILTER_ALL, label: 'Alle Status' },
+    { value: 'active', label: 'Aktiv' },
+    { value: 'deactivated', label: 'Deaktiviert' },
+    { value: 'anonymized', label: 'Anonymisiert' },
+];
+
+function cleanUserFilters(filters: Filters): Record<string, string> {
+    return cleanFilters({
+        search: filters.search,
+        role: filters.role,
+        status: filters.status,
+    });
 }
 
 function formatDate(value: string | null): string {
@@ -92,9 +120,13 @@ function roleLabels(user: ManagedUser): string[] {
     return ['Tutor'];
 }
 
-export default function AdminUsersIndex({ users, filters }: Props) {
+export default function AdminUsersIndex({ users, filters, automation }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+    const [deactivatingUser, setDeactivatingUser] =
+        useState<ManagedUser | null>(null);
+    const [isStatusActionProcessing, setIsStatusActionProcessing] =
+        useState(false);
     const filterForm = useForm<Filters>(filters);
     const createForm = useForm({
         name: '',
@@ -114,7 +146,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
     function applyFilters(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
         router.visit(
-            adminUsersIndex({ query: cleanRoleFilters(filterForm.data) }),
+            adminUsersIndex({ query: cleanUserFilters(filterForm.data) }),
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -124,7 +156,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
     }
 
     function resetFilters(): void {
-        filterForm.setData({ search: '', role: '' });
+        filterForm.setData({ search: '', role: '', status: '' });
         router.visit(adminUsersIndex(), {
             preserveScroll: true,
             preserveState: true,
@@ -185,6 +217,29 @@ export default function AdminUsersIndex({ users, filters }: Props) {
         editForm.setData({ ...editForm.data, isMod, isAdmin });
     }
 
+    function deactivateUser(): void {
+        if (!deactivatingUser) {
+            return;
+        }
+
+        router.visit(destroyAdminUser(deactivatingUser.id), {
+            method: 'delete',
+            preserveScroll: true,
+            onStart: () => setIsStatusActionProcessing(true),
+            onSuccess: () => setDeactivatingUser(null),
+            onFinish: () => setIsStatusActionProcessing(false),
+        });
+    }
+
+    function reactivateUser(user: ManagedUser): void {
+        router.visit(restoreAdminUser(user.id), {
+            method: 'patch',
+            preserveScroll: true,
+            onStart: () => setIsStatusActionProcessing(true),
+            onFinish: () => setIsStatusActionProcessing(false),
+        });
+    }
+
     return (
         <>
             <Head title="Benutzerverwaltung" />
@@ -195,7 +250,8 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             Benutzerverwaltung
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Verwalte Tutor:innen, Moderator:innen und Admins.
+                            Verwalte Zugänge für Tutor:innen, Moderator:innen
+                            und Admins.
                         </p>
                         <p className="max-w-3xl text-xs text-muted-foreground">
                             Moderator:innen können alle Einträge und Statistiken
@@ -203,158 +259,173 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             zusätzlich Benutzer:innen und Stammdaten.
                             „Verifiziert“ bedeutet, dass die E-Mail-Adresse
                             bestätigt wurde; administrativ angelegte Konten
-                            gelten direkt als bestätigt.
+                            gelten direkt als bestätigt. Deaktivierte Accounts
+                            können sich nicht mehr anmelden; ihre bisherigen
+                            Einträge bleiben erhalten.
                         </p>
                     </div>
-                    <Dialog
-                        open={isCreateDialogOpen}
-                        onOpenChange={setIsCreateDialogOpen}
-                    >
-                        <DialogTrigger asChild>
-                            <Button>
-                                <Plus className="size-4" />
-                                Neuer Benutzer
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg">
-                            <DialogHeader>
-                                <DialogTitle>Benutzer anlegen</DialogTitle>
-                                <DialogDescription>
-                                    Neue Accounts werden direkt verifiziert
-                                    angelegt.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={submitCreate} className="space-y-5">
-                                <div className="grid gap-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="create-name">
-                                            Name
-                                        </Label>
-                                        <Input
-                                            id="create-name"
-                                            value={createForm.data.name}
-                                            onChange={(event) =>
-                                                createForm.setData(
-                                                    'name',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                        <InputError
-                                            message={createForm.errors.name}
-                                        />
+                    <div className="flex flex-wrap gap-2">
+                        <UserAutomationDialog automation={automation} />
+                        <Dialog
+                            open={isCreateDialogOpen}
+                            onOpenChange={setIsCreateDialogOpen}
+                        >
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Plus className="size-4" />
+                                    Neuer Benutzer
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-lg">
+                                <DialogHeader>
+                                    <DialogTitle>Benutzer anlegen</DialogTitle>
+                                    <DialogDescription>
+                                        Neue Accounts werden direkt verifiziert
+                                        angelegt.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form
+                                    onSubmit={submitCreate}
+                                    className="space-y-5"
+                                >
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="create-name">
+                                                Name
+                                            </Label>
+                                            <Input
+                                                id="create-name"
+                                                value={createForm.data.name}
+                                                onChange={(event) =>
+                                                    createForm.setData(
+                                                        'name',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <InputError
+                                                message={createForm.errors.name}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="create-email">
+                                                E-Mail
+                                            </Label>
+                                            <Input
+                                                id="create-email"
+                                                type="email"
+                                                value={createForm.data.email}
+                                                onChange={(event) =>
+                                                    createForm.setData(
+                                                        'email',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    createForm.errors.email
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="create-password">
+                                                Passwort
+                                            </Label>
+                                            <Input
+                                                id="create-password"
+                                                type="password"
+                                                value={createForm.data.password}
+                                                onChange={(event) =>
+                                                    createForm.setData(
+                                                        'password',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    createForm.errors.password
+                                                }
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="create-email">
-                                            E-Mail
-                                        </Label>
-                                        <Input
-                                            id="create-email"
-                                            type="email"
-                                            value={createForm.data.email}
-                                            onChange={(event) =>
-                                                createForm.setData(
-                                                    'email',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                        <InputError
-                                            message={createForm.errors.email}
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="create-password">
-                                            Passwort
-                                        </Label>
-                                        <Input
-                                            id="create-password"
-                                            type="password"
-                                            value={createForm.data.password}
-                                            onChange={(event) =>
-                                                createForm.setData(
-                                                    'password',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                        <InputError
-                                            message={createForm.errors.password}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid gap-3">
-                                    <Label>Rollen</Label>
-                                    <label className="flex items-start gap-3 rounded-lg border p-3">
-                                        <Checkbox
-                                            checked={createForm.data.isMod}
-                                            onCheckedChange={(checked) =>
-                                                setCreateRoles(
-                                                    checked === true,
-                                                    checked === true
-                                                        ? createForm.data
-                                                              .isAdmin
-                                                        : false,
-                                                )
-                                            }
-                                        />
-                                        <span>
-                                            <span className="block text-sm font-medium">
-                                                Moderator:in
+                                    <div className="grid gap-3">
+                                        <Label>Rollen</Label>
+                                        <label className="flex items-start gap-3 rounded-lg border p-3">
+                                            <Checkbox
+                                                checked={createForm.data.isMod}
+                                                onCheckedChange={(checked) =>
+                                                    setCreateRoles(
+                                                        checked === true,
+                                                        checked === true
+                                                            ? createForm.data
+                                                                  .isAdmin
+                                                            : false,
+                                                    )
+                                                }
+                                            />
+                                            <span>
+                                                <span className="block text-sm font-medium">
+                                                    Moderator:in
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    Darf alle Einträge und
+                                                    Statistiken ansehen und
+                                                    korrigieren.
+                                                </span>
                                             </span>
-                                            <span className="block text-xs text-muted-foreground">
-                                                Darf alle Einträge und
-                                                Statistiken ansehen und
-                                                korrigieren.
+                                        </label>
+                                        <label className="flex items-start gap-3 rounded-lg border p-3">
+                                            <Checkbox
+                                                checked={
+                                                    createForm.data.isAdmin
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    setCreateRoles(
+                                                        checked === true
+                                                            ? true
+                                                            : createForm.data
+                                                                  .isMod,
+                                                        checked === true,
+                                                    )
+                                                }
+                                            />
+                                            <span className="text-sm font-medium">
+                                                Admin
                                             </span>
-                                        </span>
-                                    </label>
-                                    <label className="flex items-start gap-3 rounded-lg border p-3">
-                                        <Checkbox
-                                            checked={createForm.data.isAdmin}
-                                            onCheckedChange={(checked) =>
-                                                setCreateRoles(
-                                                    checked === true
-                                                        ? true
-                                                        : createForm.data.isMod,
-                                                    checked === true,
-                                                )
+                                        </label>
+                                        <InputError
+                                            message={
+                                                createForm.errors.isAdmin ??
+                                                createForm.errors.isMod
                                             }
                                         />
-                                        <span className="text-sm font-medium">
-                                            Admin
-                                        </span>
-                                    </label>
-                                    <InputError
-                                        message={
-                                            createForm.errors.isAdmin ??
-                                            createForm.errors.isMod
-                                        }
-                                    />
-                                </div>
-                                <div className="flex flex-wrap gap-3">
-                                    <Button
-                                        type="submit"
-                                        disabled={createForm.processing}
-                                    >
-                                        {createForm.processing && (
-                                            <Spinner className="mr-2" />
-                                        )}
-                                        Benutzer speichern
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() =>
-                                            setIsCreateDialogOpen(false)
-                                        }
-                                    >
-                                        Abbrechen
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                        <Button
+                                            type="submit"
+                                            disabled={createForm.processing}
+                                        >
+                                            {createForm.processing && (
+                                                <Spinner className="mr-2" />
+                                            )}
+                                            Benutzer speichern
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() =>
+                                                setIsCreateDialogOpen(false)
+                                            }
+                                        >
+                                            Abbrechen
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </div>
 
                 <Card>
@@ -364,14 +435,14 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             <CardTitle>Benutzer</CardTitle>
                         </div>
                         <CardDescription>
-                            Suche Accounts und passe Rollen oder Zugangsdaten
-                            an.
+                            Suche Accounts, passe Rollen oder Zugangsdaten an
+                            und steuere den Zugang.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <form
                             onSubmit={applyFilters}
-                            className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem_auto_auto]"
+                            className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_14rem_14rem_auto_auto]"
                         >
                             <div className="grid gap-2">
                                 <Label htmlFor="search">Suche</Label>
@@ -417,6 +488,32 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="grid gap-2">
+                                <Label>Status</Label>
+                                <Select
+                                    value={filterForm.data.status || FILTER_ALL}
+                                    onValueChange={(value) =>
+                                        filterForm.setData(
+                                            'status',
+                                            value === FILTER_ALL ? '' : value,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Alle Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {statusOptions.map((option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="flex items-end">
                                 <Button type="submit" className="w-full">
                                     Anwenden
@@ -445,7 +542,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                 {users.data.map((user) => (
                                     <article
                                         key={user.id}
-                                        className="rounded-xl border bg-muted/20 p-4"
+                                        className={`rounded-xl border p-4 ${user.deletedAt ? 'bg-muted/40' : 'bg-muted/20'}`}
                                     >
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="space-y-3">
@@ -459,24 +556,40 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                                             Du
                                                         </Badge>
                                                     )}
-                                                    {roleLabels(user).map(
-                                                        (role) => (
-                                                            <Badge
-                                                                key={`${user.id}-${role}`}
-                                                                variant={
-                                                                    role ===
-                                                                    'Admin'
-                                                                        ? 'default'
-                                                                        : role ===
-                                                                            'Moderator'
-                                                                          ? 'secondary'
-                                                                          : 'outline'
-                                                                }
-                                                            >
-                                                                {role}
-                                                            </Badge>
-                                                        ),
-                                                    )}
+                                                    <Badge
+                                                        variant={
+                                                            user.anonymizedAt
+                                                                ? 'outline'
+                                                                : user.deletedAt
+                                                                  ? 'outline'
+                                                                  : 'secondary'
+                                                        }
+                                                    >
+                                                        {user.anonymizedAt
+                                                            ? 'Anonymisiert'
+                                                            : user.deletedAt
+                                                              ? 'Deaktiviert'
+                                                              : 'Aktiv'}
+                                                    </Badge>
+                                                    {!user.anonymizedAt &&
+                                                        roleLabels(user).map(
+                                                            (role) => (
+                                                                <Badge
+                                                                    key={`${user.id}-${role}`}
+                                                                    variant={
+                                                                        role ===
+                                                                        'Admin'
+                                                                            ? 'default'
+                                                                            : role ===
+                                                                                'Moderator'
+                                                                              ? 'secondary'
+                                                                              : 'outline'
+                                                                    }
+                                                                >
+                                                                    {role}
+                                                                </Badge>
+                                                            ),
+                                                        )}
                                                 </div>
                                                 <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
                                                     <div className="flex items-center gap-2">
@@ -505,18 +618,72 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                                     Angelegt am{' '}
                                                     {formatDate(user.createdAt)}
                                                 </p>
+                                                {user.deletedAt && (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Deaktiviert am{' '}
+                                                        {formatDate(
+                                                            user.deletedAt,
+                                                        )}
+                                                    </p>
+                                                )}
+                                                {user.anonymizedAt && (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Anonymisiert am{' '}
+                                                        {formatDate(
+                                                            user.anonymizedAt,
+                                                        )}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="flex flex-wrap gap-2">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() =>
-                                                        openEditDialog(user)
-                                                    }
-                                                >
-                                                    <PencilLine className="size-4" />
-                                                    Bearbeiten
-                                                </Button>
+                                                {!user.deletedAt && (
+                                                    <>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                openEditDialog(
+                                                                    user,
+                                                                )
+                                                            }
+                                                        >
+                                                            <PencilLine className="size-4" />
+                                                            Bearbeiten
+                                                        </Button>
+                                                        {!user.isCurrentUser && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                onClick={() =>
+                                                                    setDeactivatingUser(
+                                                                        user,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <UserX className="size-4" />
+                                                                Deaktivieren
+                                                            </Button>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {user.deletedAt &&
+                                                    !user.anonymizedAt && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            disabled={
+                                                                isStatusActionProcessing
+                                                            }
+                                                            onClick={() =>
+                                                                reactivateUser(
+                                                                    user,
+                                                                )
+                                                            }
+                                                        >
+                                                            <RotateCcw className="size-4" />
+                                                            Reaktivieren
+                                                        </Button>
+                                                    )}
                                             </div>
                                         </div>
                                     </article>
@@ -661,6 +828,48 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             </Button>
                         </div>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={deactivatingUser !== null}
+                onOpenChange={(open) => {
+                    if (!open && !isStatusActionProcessing) {
+                        setDeactivatingUser(null);
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Benutzer deaktivieren?</DialogTitle>
+                        <DialogDescription>
+                            {deactivatingUser?.name} kann sich danach nicht mehr
+                            anmelden. Bestehende Einsätze und deren Zuordnung
+                            bleiben erhalten. Der Account kann jederzeit
+                            reaktiviert werden.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isStatusActionProcessing}
+                            onClick={() => setDeactivatingUser(null)}
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={isStatusActionProcessing}
+                            onClick={deactivateUser}
+                        >
+                            {isStatusActionProcessing && (
+                                <Spinner className="mr-2" />
+                            )}
+                            Deaktivieren
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>

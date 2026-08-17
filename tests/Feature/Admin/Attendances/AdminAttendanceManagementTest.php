@@ -62,6 +62,24 @@ it('shows all attendances to admins and supports tutor filtering', function () {
             ->has('formOptions.tutors'));
 });
 
+it('keeps deactivated tutors visible on historical attendances', function () {
+    $admin = User::factory()->admin()->create();
+    $tutor = User::factory()->create([
+        'name' => 'Former Tutor',
+        'email' => 'former@example.com',
+    ]);
+    Attendance::factory()->for($tutor)->create();
+    $tutor->delete();
+
+    $this->actingAs($admin)
+        ->get(route('admin.attendances.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('attendances.data', 1)
+            ->where('attendances.data.0.tutor.name', 'Former Tutor')
+            ->where('attendances.data.0.tutor.email', 'former@example.com'));
+});
+
 it('allows moderators to open the admin attendance page and update entries', function () {
     $moderator = User::factory()->create(['isMod' => true]);
     $tutor = User::factory()->create();

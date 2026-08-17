@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -23,6 +24,22 @@ it('opens the create user dialog', function () {
     $page->click('button:has-text("Neuer Benutzer")')
         ->assertSee('Benutzer speichern')
         ->assertNoJavaScriptErrors();
+});
+
+it('updates the anonymization period and shows automation health', function () {
+    $page = visit('/admin/users');
+
+    $page->assertSee('Automatisierung')
+        ->click('button:has-text("Automatisierung")')
+        ->assertSee('Automatische Anonymisierung')
+        ->assertSee('Noch kein Signal')
+        ->fill('input#anonymization-months', '3')
+        ->click('button:has-text("Frist speichern")')
+        ->click('button:has-text("Jetzt testen")')
+        ->assertSee('Test läuft')
+        ->assertNoJavaScriptErrors();
+
+    expect(SystemSetting::current()->user_anonymization_months)->toBe(3);
 });
 
 it('creates a new user', function () {
@@ -53,6 +70,26 @@ it('shows validation errors when creating user with duplicate email', function (
         ->click('button:has-text("Benutzer speichern")')
         ->assertSee('Benutzer speichern')
         ->assertNoJavaScriptErrors();
+});
+
+it('deactivates and reactivates a user from the admin page', function () {
+    $user = User::factory()->create(['name' => 'Tutor Status']);
+
+    $page = visit('/admin/users');
+
+    $page->click('article:has-text("Tutor Status") button:has-text("Deaktivieren")')
+        ->assertSee('Benutzer deaktivieren?')
+        ->click('[role="dialog"] button:has-text("Deaktivieren")')
+        ->assertSee('Reaktivieren')
+        ->assertNoJavaScriptErrors();
+
+    $this->assertSoftDeleted($user);
+
+    $page->click('article:has-text("Tutor Status") button:has-text("Reaktivieren")')
+        ->assertSee('Aktiv')
+        ->assertNoJavaScriptErrors();
+
+    $this->assertNotSoftDeleted($user);
 });
 
 it('does not show admin content to non-admin users', function () {

@@ -3,6 +3,8 @@
 use App\Http\Controllers\AdminDegreeController;
 use App\Http\Controllers\AdminFacultyController;
 use App\Http\Controllers\AdminSemesterController;
+use App\Http\Controllers\AdminUserAutomationCheckController;
+use App\Http\Controllers\AdminUserAutomationController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AttendanceController;
 use Illuminate\Http\Request;
@@ -36,9 +38,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/users', [AdminUserController::class, 'store'])
         ->middleware('can:manage-admin-users')
         ->name('admin.users.store');
+    Route::patch('admin/users/automation', AdminUserAutomationController::class)
+        ->middleware('can:manage-admin-users')
+        ->name('admin.users.automation.update');
+    Route::post('admin/users/automation/check', AdminUserAutomationCheckController::class)
+        ->middleware('can:manage-admin-users')
+        ->name('admin.users.automation.check');
     Route::put('admin/users/{user}', [AdminUserController::class, 'update'])
         ->middleware('can:manage-admin-users')
         ->name('admin.users.update');
+    Route::delete('admin/users/{user}', [AdminUserController::class, 'destroy'])
+        ->middleware('can:manage-admin-users')
+        ->name('admin.users.destroy');
+    Route::patch('admin/users/{user}/restore', [AdminUserController::class, 'restore'])
+        ->middleware('can:manage-admin-users')
+        ->name('admin.users.restore');
     Route::get('admin/semesters', [AdminSemesterController::class, 'index'])
         ->middleware('can:manage-semesters')
         ->name('admin.semesters.index');

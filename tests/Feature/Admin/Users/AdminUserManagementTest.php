@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -89,10 +91,139 @@ it('prevents admins from removing their own admin role', function () {
     $response->assertSessionHasErrors('isAdmin');
 });
 
+it('shows active and deactivated users and filters by status', function () {
+    $admin = User::factory()->admin()->create();
+    User::factory()->create(['name' => 'Active Tutor']);
+    $deactivatedUser = User::factory()->create(['name' => 'Former Tutor']);
+    $deactivatedUser->delete();
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.index', ['status' => 'deactivated']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.status', 'deactivated')
+            ->has('users.data', 1)
+            ->where('users.data.0.name', 'Former Tutor')
+            ->where('users.data.0.deletedAt', fn (mixed $value): bool => is_string($value)));
+});
+
+it('filters anonymized users separately', function () {
+    $admin = User::factory()->admin()->create();
+    $anonymizedUser = User::factory()->create();
+    $anonymizedUser->delete();
+    $anonymizedUser->anonymize();
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.index', ['status' => 'anonymized']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.status', 'anonymized')
+            ->has('users.data', 1)
+            ->where('users.data.0.name', 'Anonymisierter Account')
+            ->where('users.data.0.anonymizedAt', fn (mixed $value): bool => is_string($value)));
+});
+
+it('allows admins to deactivate users while preserving their attendances', function () {
+    config()->set('session.driver', 'database');
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create(['remember_token' => 'remember-token']);
+    $attendance = Attendance::factory()->for($user)->create();
+
+    DB::table('sessions')->insert([
+        'id' => 'managed-user-session',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => 'test',
+        'last_activity' => now()->timestamp,
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $user))
+        ->assertRedirect(route('admin.users.index'));
+
+    $this->assertSoftDeleted($user);
+    $this->assertDatabaseHas('attendances', ['id' => $attendance->id]);
+    $this->assertDatabaseMissing('sessions', ['id' => 'managed-user-session']);
+
+    $deactivatedUser = User::withTrashed()->findOrFail($user->id);
+
+    expect($deactivatedUser->remember_token)
+        ->not->toBe('remember-token')
+        ->and($attendance->fresh()->user?->name)->toBe($user->name);
+});
+
+it('prevents admins from deactivating their own account', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $admin))
+        ->assertForbidden();
+
+    $this->assertNotSoftDeleted($admin);
+});
+
+it('allows admins to reactivate users', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+    $user->delete();
+
+    $this->actingAs($admin)
+        ->patch(route('admin.users.restore', $user->id))
+        ->assertRedirect(route('admin.users.index'));
+
+    $this->assertDatabaseHas('users', [
+        'id' => $user->id,
+        'deleted_at' => null,
+    ]);
+});
+
+it('does not reactivate anonymized users', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+    $user->delete();
+    $user->anonymize();
+
+    $this->actingAs($admin)
+        ->patch(route('admin.users.restore', $user->id))
+        ->assertStatus(409);
+
+    $this->assertSoftDeleted($user);
+});
+
+it('prevents deactivated users from signing in', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create([
+        'email' => 'former@example.com',
+        'password' => 'password',
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $user));
+
+    $this->post(route('logout'));
+    $this->post(route('login.store'), [
+        'email' => 'former@example.com',
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+});
+
 it('forbids non admins from opening user management', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('admin.users.index'))
+        ->assertForbidden();
+});
+
+it('forbids non admins from changing user activation status', function () {
+    $user = User::factory()->create();
+    $managedUser = User::factory()->create();
+
+    $this->actingAs($user)
+        ->delete(route('admin.users.destroy', $managedUser))
         ->assertForbidden();
 });

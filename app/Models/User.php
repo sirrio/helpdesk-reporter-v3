@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 #[Fillable(['name', 'email', 'password', 'isMod', 'isAdmin', 'email_verified_at'])]
@@ -34,6 +35,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'deleted_at' => 'datetime',
+            'anonymized_at' => 'datetime',
         ];
     }
 
@@ -43,5 +45,29 @@ class User extends Authenticatable
     public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    /**
+     * Irreversibly remove personal account data while preserving references.
+     */
+    public function anonymize(): void
+    {
+        if (! $this->trashed() || $this->anonymized_at !== null) {
+            return;
+        }
+
+        $this->forceFill([
+            'name' => 'Anonymisierter Account',
+            'email' => 'anonymized-'.Str::uuid().'@example.invalid',
+            'password' => Str::random(64),
+            'email_verified_at' => null,
+            'remember_token' => null,
+            'isMod' => false,
+            'isAdmin' => false,
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+            'anonymized_at' => now(),
+        ])->save();
     }
 }
