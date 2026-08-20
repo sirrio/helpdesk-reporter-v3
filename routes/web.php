@@ -32,6 +32,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/statistics', [AttendanceController::class, 'statistics'])
         ->middleware('can:view-admin-attendances')
         ->name('admin.statistics.index');
+    Route::get('admin/statistics/csv', [AttendanceController::class, 'statisticsCsv'])
+        ->middleware('can:view-admin-attendances')
+        ->name('admin.statistics.csv');
     Route::get('admin/users', [AdminUserController::class, 'index'])
         ->middleware('can:manage-admin-users')
         ->name('admin.users.index');
