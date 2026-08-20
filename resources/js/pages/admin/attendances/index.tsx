@@ -559,10 +559,11 @@ export default function AdminAttendancesIndex({
                                 {attendances.data.map((attendance) => (
                                     <article
                                         key={attendance.id}
-                                        className="rounded-xl border bg-muted/20 p-4"
+                                        data-testid="admin-attendance-card"
+                                        className="overflow-hidden rounded-xl border bg-card shadow-xs"
                                     >
-                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                            <div className="space-y-3">
+                                        <div className="space-y-4 p-4">
+                                            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <Badge variant="secondary">
                                                         <CalendarDays className="size-3.5" />
@@ -594,87 +595,125 @@ export default function AdminAttendancesIndex({
                                                             : 'Besucher:innen'}
                                                     </Badge>
                                                 </div>
-                                                <div className="grid gap-2 text-sm md:grid-cols-2">
-                                                    <div className="flex items-center gap-2 text-foreground">
-                                                        <Users className="size-4 text-muted-foreground" />
-                                                        <span className="font-medium">
+                                                <div
+                                                    data-testid="admin-attendance-card-actions"
+                                                    className="grid grid-cols-2 gap-2 sm:flex sm:justify-end"
+                                                >
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full sm:w-auto"
+                                                        onClick={() =>
+                                                            openEditDialog(
+                                                                attendance,
+                                                            )
+                                                        }
+                                                    >
+                                                        <PencilLine className="size-3.5" />
+                                                        Bearbeiten
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto dark:border-destructive/40"
+                                                        onClick={() =>
+                                                            setDeletingAttendance(
+                                                                attendance,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="size-3.5" />
+                                                        Löschen
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid gap-4 border-t pt-4 lg:grid-cols-[minmax(16rem,1fr)_minmax(0,2fr)] lg:gap-0">
+                                                <div className="flex min-w-0 items-center gap-3 lg:pr-6">
+                                                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                        <Users className="size-5" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-medium text-muted-foreground">
+                                                            Tutor:in
+                                                        </p>
+                                                        <p className="truncate text-sm font-semibold">
                                                             {attendance.tutor
                                                                 ?.name ??
                                                                 'Unbekannt'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                                        <Mail className="size-4" />
-                                                        <span>
-                                                            {attendance.tutor
-                                                                ?.email ??
-                                                                'Keine E-Mail'}
-                                                        </span>
+                                                        </p>
+                                                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                            <Mail className="size-3.5 shrink-0" />
+                                                            <span className="truncate">
+                                                                {attendance
+                                                                    .tutor
+                                                                    ?.email ??
+                                                                    'Keine E-Mail'}
+                                                            </span>
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <School className="size-4" />
-                                                        <span>
+                                                <dl
+                                                    data-testid="admin-attendance-card-details"
+                                                    className="divide-y border-y sm:grid sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:border-y-0 lg:border-l"
+                                                >
+                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                        <dt className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            <School className="size-4 shrink-0" />
+                                                            Semester
+                                                        </dt>
+                                                        <dd className="text-right text-sm font-medium sm:mt-1.5 sm:text-left">
                                                             {
                                                                 attendance.semester
                                                             }
-                                                        </span>
+                                                        </dd>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <GraduationCap className="size-4" />
-                                                        <span>
+                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                        <dt className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            <GraduationCap className="size-4 shrink-0" />
+                                                            Studiengang
+                                                        </dt>
+                                                        <dd className="text-right text-sm font-medium sm:mt-1.5 sm:text-left">
                                                             {attendance.degree}
-                                                        </span>
+                                                        </dd>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Filter className="size-4" />
-                                                        <span>
+                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                        <dt className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            <Filter className="size-4 shrink-0" />
+                                                            Fachbereich
+                                                        </dt>
+                                                        <dd className="text-right text-sm font-medium sm:mt-1.5 sm:text-left">
                                                             {attendance.faculty}
-                                                        </span>
+                                                        </dd>
                                                     </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 lg:max-w-md lg:justify-end">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        openEditDialog(
-                                                            attendance,
-                                                        )
-                                                    }
-                                                >
-                                                    <PencilLine className="size-3.5" />
-                                                    Bearbeiten
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setDeletingAttendance(
-                                                            attendance,
-                                                        )
-                                                    }
-                                                >
-                                                    <Trash2 className="size-3.5" />
-                                                    Löschen
-                                                </Button>
-                                                {attendance.topics.map(
-                                                    (topic) => (
-                                                        <Badge
-                                                            key={topic}
-                                                            variant="outline"
-                                                            className="bg-background"
-                                                        >
-                                                            {topic}
-                                                        </Badge>
-                                                    ),
-                                                )}
+                                                </dl>
                                             </div>
                                         </div>
+                                        {attendance.topics.length > 0 && (
+                                            <div
+                                                data-testid="admin-attendance-card-topics"
+                                                className="flex flex-col gap-2 border-t bg-muted/15 px-4 py-3 sm:flex-row sm:items-center"
+                                            >
+                                                <span className="shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                                    Themen
+                                                </span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {attendance.topics.map(
+                                                        (topic) => (
+                                                            <Badge
+                                                                key={topic}
+                                                                variant="outline"
+                                                                className="bg-background"
+                                                            >
+                                                                {topic}
+                                                            </Badge>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </article>
                                 ))}
                             </div>
