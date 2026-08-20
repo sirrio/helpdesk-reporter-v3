@@ -48,7 +48,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                         <SidebarMenuButton
                                             isActive={isItemActive}
                                             tooltip={{ children: item.title }}
-                                            className="data-[state=open]:bg-sidebar-accent"
+                                            className="border-l-[3px] border-l-transparent data-[active=true]:border-l-hsrm-red data-[active=true]:text-hsrm-red data-[state=open]:bg-sidebar-accent dark:data-[active=true]:text-white"
                                         >
                                             {item.icon && <item.icon />}
                                             <span>{item.title}</span>
@@ -103,6 +103,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 asChild
                                 isActive={isItemActive}
                                 tooltip={{ children: item.title }}
+                                className="border-l-[3px] border-l-transparent data-[active=true]:border-l-hsrm-red data-[active=true]:text-hsrm-red dark:data-[active=true]:text-white"
                             >
                                 <Link href={item.href} prefetch>
                                     {item.icon && <item.icon />}
@@ -118,6 +119,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                             <SidebarMenuSubButton
                                                 asChild
                                                 isActive={child.isActive}
+                                                className="data-[active=true]:text-hsrm-red dark:data-[active=true]:text-white"
                                             >
                                                 <Link
                                                     href={child.href}

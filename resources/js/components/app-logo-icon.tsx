@@ -1,6 +1,13 @@
 import type { SVGAttributes } from 'react';
 
-export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
+type AppLogoIconProps = SVGAttributes<SVGElement> & {
+    brandColors?: boolean;
+};
+
+export default function AppLogoIcon({
+    brandColors = false,
+    ...props
+}: AppLogoIconProps) {
     return (
         <svg
             {...props}
@@ -16,7 +23,10 @@ export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
                     />
                 </clipPath>
             </defs>
-            <g clipPath="url(#logo-clip)">
+            <g
+                clipPath="url(#logo-clip)"
+                className={brandColors ? 'text-hsrm-violet' : undefined}
+            >
                 <path
                     fill="currentColor"
                     fillRule="nonzero"
@@ -24,6 +34,7 @@ export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
                 />
             </g>
             <path
+                className={brandColors ? 'text-hsrm-red' : undefined}
                 fill="currentColor"
                 fillRule="nonzero"
                 d="M 150.789062 125.871094 C 150.164062 125.785156 149.820312 126.058594 149.820312 126.929688 L 149.820312 189.621094 C 149.820312 196.34375 171.164062 199.652344 178.410156 197.617188 C 179.089844 197.425781 179.652344 196.960938 179.652344 196.253906 L 179.652344 132.347656 C 179.652344 131.550781 178.976562 130.925781 178.179688 130.980469 C 175.714844 131.128906 173.476562 131.167969 171.410156 131.109375 C 170.632812 131.097656 170 131.707031 169.996094 132.484375 L 169.996094 134.734375 C 169.996094 135.355469 169.503906 135.917969 168.890625 135.820312 C 165 135.238281 161.707031 134.515625 157.835938 133.3125 C 157.363281 133.164062 157.03125 132.746094 157.03125 132.25 L 157.03125 129.550781 C 157.03125 128.984375 156.675781 128.507812 156.15625 128.273438 C 153.699219 127.179688 151.839844 126.023438 150.789062 125.871094 Z"

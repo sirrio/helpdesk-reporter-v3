@@ -992,8 +992,11 @@ export default function AttendancesIndex({
                                                     </Button>
                                                 </div>
                                             </div>
-                                            <dl className="grid divide-y border-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                                                <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0 sm:first:pl-0">
+                                            <dl
+                                                data-testid="attendance-card-details"
+                                                className="grid divide-y border-t pt-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+                                            >
+                                                <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-3 sm:first:pl-0">
                                                     <dt className="flex items-center gap-2 text-xs text-muted-foreground">
                                                         <School className="size-4 shrink-0" />
                                                         Semester
@@ -1002,7 +1005,7 @@ export default function AttendancesIndex({
                                                         {attendance.semester}
                                                     </dd>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-3">
                                                     <dt className="flex items-center gap-2 text-xs text-muted-foreground">
                                                         <GraduationCap className="size-4 shrink-0" />
                                                         Studiengang
@@ -1011,7 +1014,7 @@ export default function AttendancesIndex({
                                                         {attendance.degree}
                                                     </dd>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-3">
                                                     <dt className="flex items-center gap-2 text-xs text-muted-foreground">
                                                         <Filter className="size-4 shrink-0" />
                                                         Fachbereich

@@ -15,6 +15,6 @@ test('the application uses the icon-only favicon assets', function () {
         ->and(File::exists(public_path('favicon-icon.svg')))->toBeTrue()
         ->and(File::exists(public_path('apple-touch-icon.png')))->toBeTrue()
         ->and(File::get(public_path('favicon-icon.svg')))
-        ->toContain('fill="#111827"', 'fill="#ff9d0a"')
+        ->toContain('fill="#f5d2f0"', 'fill="#361f47"', 'fill="#e30613"')
         ->not->toContain('Helpdesk', 'Reporter');
 });

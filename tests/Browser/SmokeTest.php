@@ -65,7 +65,13 @@ it('organizes admin attendance cards on desktop and mobile', function () {
 
         $page->assertPresent('[data-testid="admin-attendance-card"]')
             ->assertPresent('[data-testid="admin-attendance-card-actions"]')
+            ->assertPresent(
+                '[data-testid="admin-attendance-card-body"][class~="border-t"]',
+            )
             ->assertPresent('[data-testid="admin-attendance-card-details"]')
+            ->assertPresent(
+                '[data-testid="admin-attendance-card-details"] > [class~="sm:py-3"]',
+            )
             ->assertPresent('[data-testid="admin-attendance-card-topics"]')
             ->assertSee('Tutor:in')
             ->assertSee('Semester')
@@ -102,7 +108,13 @@ it('organizes tutor attendance cards on desktop and mobile', function () {
 
         $page->assertPresent('[data-testid="attendance-card"]')
             ->assertPresent(
-                '[data-testid="attendance-card"] [data-slot="badge"].bg-sky-100',
+                '[data-testid="attendance-card-details"][class~="border-t"]',
+            )
+            ->assertPresent(
+                '[data-testid="attendance-card-details"] > [class~="sm:py-3"]',
+            )
+            ->assertPresent(
+                '[data-testid="attendance-card"] [data-slot="badge"][class~="bg-hsrm-blue/15"]',
             )
             ->assertSee('Online')
             ->assertSee('Semester')

@@ -630,7 +630,10 @@ export default function AdminAttendancesIndex({
                                                 </div>
                                             </div>
 
-                                            <div className="grid gap-4 border-t pt-4 lg:grid-cols-[minmax(16rem,1fr)_minmax(0,2fr)] lg:gap-0">
+                                            <div
+                                                data-testid="admin-attendance-card-body"
+                                                className="grid gap-4 border-t pt-4 lg:grid-cols-[minmax(16rem,1fr)_minmax(0,2fr)] lg:gap-0"
+                                            >
                                                 <div className="flex min-w-0 items-center gap-3 lg:pr-6">
                                                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                                                         <Users className="size-5" />
@@ -659,7 +662,7 @@ export default function AdminAttendancesIndex({
                                                     data-testid="admin-attendance-card-details"
                                                     className="divide-y border-y sm:grid sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:border-y-0 lg:border-l"
                                                 >
-                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-3">
                                                         <dt className="flex items-center gap-2 text-xs text-muted-foreground">
                                                             <School className="size-4 shrink-0" />
                                                             Semester
@@ -670,7 +673,7 @@ export default function AdminAttendancesIndex({
                                                             }
                                                         </dd>
                                                     </div>
-                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-3">
                                                         <dt className="flex items-center gap-2 text-xs text-muted-foreground">
                                                             <GraduationCap className="size-4 shrink-0" />
                                                             Studiengang
@@ -679,7 +682,7 @@ export default function AdminAttendancesIndex({
                                                             {attendance.degree}
                                                         </dd>
                                                     </div>
-                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-0">
+                                                    <div className="flex items-center justify-between gap-3 py-2.5 sm:block sm:px-4 sm:py-3">
                                                         <dt className="flex items-center gap-2 text-xs text-muted-foreground">
                                                             <Filter className="size-4 shrink-0" />
                                                             Fachbereich
