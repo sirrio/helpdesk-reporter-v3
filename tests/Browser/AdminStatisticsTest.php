@@ -12,14 +12,22 @@ beforeEach(function () {
 });
 
 it('shows the statistics page with export button', function () {
-    $page = visit('/admin/statistics');
+    $page = visit('/admin/statistics')->waitForEvent('networkidle');
 
     $page->assertSee('Statistik')
+        ->assertSee('Als CSV herunterladen')
         ->assertSee('Als PDF exportieren')
         ->assertSee('Studiengangs- und Themenstatistiken')
         ->assertSee('Verteilung Fachbereich')
         ->assertSee('Verteilung Studiengang')
         ->assertSee('Verteilung Thema')
+        ->assertNoJavaScriptErrors();
+});
+
+it('shows the CSV export on mobile', function () {
+    $page = visit('/admin/statistics')->resize(390, 844);
+
+    $page->assertSee('Als CSV herunterladen')
         ->assertNoJavaScriptErrors();
 });
 

@@ -5,6 +5,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock3,
+    Download,
     Filter,
     GraduationCap,
     Layers3,
@@ -15,7 +16,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { statistics as adminStatisticsIndex } from '@/actions/App/Http/Controllers/AttendanceController';
+import {
+    statistics as adminStatisticsIndex,
+    statisticsCsv as adminStatisticsCsv,
+} from '@/actions/App/Http/Controllers/AttendanceController';
 import { LocalizedDateInput } from '@/components/localized-date-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -414,7 +418,17 @@ export default function AdminStatisticsIndex({
                             Fachbereichs-, Studiengangs- und Themenstatistiken.
                         </p>
                     </div>
-                    <div className="flex gap-2 print:hidden">
+                    <div className="flex flex-wrap gap-2 print:hidden">
+                        <Button asChild variant="outline">
+                            <a
+                                href={adminStatisticsCsv.url({
+                                    query: cleanFilters(filters),
+                                })}
+                            >
+                                <Download className="size-4" />
+                                Als CSV herunterladen
+                            </a>
+                        </Button>
                         <Button
                             type="button"
                             variant="outline"

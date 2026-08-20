@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\ExportAttendancesCsv;
 use App\Http\Requests\AdminAttendanceIndexRequest;
 use App\Http\Requests\AttendanceIndexRequest;
 use App\Http\Requests\DestroyAttendanceRequest;
@@ -17,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttendanceController extends Controller
 {
@@ -110,6 +112,19 @@ class AttendanceController extends Controller
                 $filters['semester'] ?? null,
             ),
         ]);
+    }
+
+    /**
+     * Download the filtered helpdesk entries as CSV.
+     */
+    public function statisticsCsv(
+        AdminAttendanceIndexRequest $request,
+        ExportAttendancesCsv $export,
+    ): StreamedResponse {
+        return $export->handle($request->safe()->only([
+            ...$this->attendanceFilterKeys(),
+            'user',
+        ]));
     }
 
     /**
