@@ -21,6 +21,18 @@ it('shows the statistics page with export button', function () {
         ->assertSee('Verteilung Fachbereich')
         ->assertSee('Verteilung Studiengang')
         ->assertSee('Verteilung Thema')
+        ->assertPresent(
+            '[data-testid="statistics-summary-entries"].border-t-chart-1',
+        )
+        ->assertPresent(
+            '[data-testid="statistics-summary-hours"].border-t-chart-2',
+        )
+        ->assertPresent(
+            '[data-testid="statistics-summary-tutors"].border-t-chart-3',
+        )
+        ->assertPresent(
+            '[data-testid="statistics-summary-online"].border-t-chart-4',
+        )
         ->assertNoJavaScriptErrors();
 });
 

@@ -246,7 +246,7 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                         variant={
                                                             faculty.deletedAt
                                                                 ? 'outline'
-                                                                : 'secondary'
+                                                                : 'success'
                                                         }
                                                     >
                                                         {faculty.deletedAt

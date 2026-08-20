@@ -577,8 +577,8 @@ export default function AdminAttendancesIndex({
                                                     <Badge
                                                         variant={
                                                             attendance.online
-                                                                ? 'default'
-                                                                : 'outline'
+                                                                ? 'info'
+                                                                : 'secondary'
                                                         }
                                                     >
                                                         <MonitorSmartphone className="size-3.5" />

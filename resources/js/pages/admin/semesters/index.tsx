@@ -318,7 +318,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                                                         variant={
                                                             semester.deletedAt
                                                                 ? 'outline'
-                                                                : 'secondary'
+                                                                : 'success'
                                                         }
                                                     >
                                                         {semester.deletedAt

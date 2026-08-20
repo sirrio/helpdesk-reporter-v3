@@ -75,3 +75,40 @@ it('organizes admin attendance cards on desktop and mobile', function () {
             ->assertNoJavaScriptErrors();
     }
 });
+
+it('organizes tutor attendance cards on desktop and mobile', function () {
+    $tutor = User::factory()->create();
+
+    Attendance::factory()->for($tutor)->create([
+        'semester' => 'SS 2025',
+        'degree' => 'Informatik',
+        'faculty' => 'Informatik',
+        'mathBasic' => true,
+        'mathFractions' => false,
+        'mathLow' => false,
+        'mathHigh' => false,
+        'programming' => true,
+        'physics' => false,
+        'chemistry' => false,
+        'organization' => false,
+        'online' => true,
+        'visitors' => 1,
+    ]);
+
+    $this->actingAs($tutor);
+
+    foreach ([[1440, 900], [390, 844]] as [$width, $height]) {
+        $page = visit('/attendances')->resize($width, $height);
+
+        $page->assertPresent('[data-testid="attendance-card"]')
+            ->assertPresent(
+                '[data-testid="attendance-card"] [data-slot="badge"].bg-sky-100',
+            )
+            ->assertSee('Online')
+            ->assertSee('Semester')
+            ->assertSee('Studiengang')
+            ->assertSee('Fachbereich')
+            ->assertSee('Themen')
+            ->assertNoJavaScriptErrors();
+    }
+});

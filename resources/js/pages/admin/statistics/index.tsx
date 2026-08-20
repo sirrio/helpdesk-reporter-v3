@@ -740,7 +740,10 @@ export default function AdminStatisticsIndex({
                 </Collapsible>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <Card>
+                    <Card
+                        data-testid="statistics-summary-entries"
+                        className="border-t-4 border-t-chart-1"
+                    >
                         <CardHeader className="pb-3">
                             <CardDescription>Beratungen</CardDescription>
                             <CardTitle className="text-3xl">
@@ -752,7 +755,10 @@ export default function AdminStatisticsIndex({
                             Filter.
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card
+                        data-testid="statistics-summary-hours"
+                        className="border-t-4 border-t-chart-2"
+                    >
                         <CardHeader className="pb-3">
                             <CardDescription>Stunden</CardDescription>
                             <CardTitle className="text-3xl">
@@ -766,7 +772,10 @@ export default function AdminStatisticsIndex({
                             </span>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card
+                        data-testid="statistics-summary-tutors"
+                        className="border-t-4 border-t-chart-3"
+                    >
                         <CardHeader className="pb-3">
                             <CardDescription>
                                 Aktive Tutor:innen
@@ -782,7 +791,10 @@ export default function AdminStatisticsIndex({
                             </span>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card
+                        data-testid="statistics-summary-online"
+                        className="border-t-4 border-t-chart-4"
+                    >
                         <CardHeader className="pb-3">
                             <CardDescription>Online-Anteil</CardDescription>
                             <CardTitle className="text-3xl">
@@ -876,7 +888,7 @@ export default function AdminStatisticsIndex({
                                     </div>
                                     <div className="h-2 rounded-full bg-border">
                                         <div
-                                            className="h-2 rounded-full bg-foreground/80"
+                                            className="h-2 rounded-full bg-chart-1"
                                             style={{
                                                 width: `${percentage(day.entries, Math.max(maxWeeklyEntries, 10))}%`,
                                             }}
@@ -922,7 +934,7 @@ export default function AdminStatisticsIndex({
                                                 </p>
                                                 <div className="h-2 rounded-full bg-border">
                                                     <div
-                                                        className="h-2 rounded-full bg-foreground/80"
+                                                        className="h-2 rounded-full bg-chart-2"
                                                         style={{
                                                             width: `${percentage(
                                                                 semesterWeek.entries,
@@ -971,7 +983,7 @@ export default function AdminStatisticsIndex({
                                         </div>
                                         <div className="h-2 rounded-full bg-border">
                                             <div
-                                                className="h-2 rounded-full bg-foreground/80"
+                                                className="h-2 rounded-full bg-chart-2"
                                                 style={{
                                                     width: `${percentage(faculty.entries, maxFacultyEntries)}%`,
                                                 }}
@@ -1013,7 +1025,7 @@ export default function AdminStatisticsIndex({
                                         </div>
                                         <div className="h-2 rounded-full bg-border">
                                             <div
-                                                className="h-2 rounded-full bg-foreground/80"
+                                                className="h-2 rounded-full bg-chart-3"
                                                 style={{
                                                     width: `${percentage(degree.entries, maxDegreeEntries)}%`,
                                                 }}
@@ -1054,7 +1066,7 @@ export default function AdminStatisticsIndex({
                                         </div>
                                         <div className="h-2 rounded-full bg-border">
                                             <div
-                                                className="h-2 rounded-full bg-foreground/80"
+                                                className="h-2 rounded-full bg-chart-4"
                                                 style={{
                                                     width: `${percentage(topic.entries, maxTopicEntries)}%`,
                                                 }}
