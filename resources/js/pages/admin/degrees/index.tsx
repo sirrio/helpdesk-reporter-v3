@@ -292,7 +292,7 @@ export default function AdminDegreesIndex({
                                                         variant={
                                                             degree.deletedAt
                                                                 ? 'outline'
-                                                                : 'secondary'
+                                                                : 'success'
                                                         }
                                                     >
                                                         {degree.deletedAt

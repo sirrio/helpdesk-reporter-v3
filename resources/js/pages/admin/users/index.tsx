@@ -559,10 +559,10 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                                     <Badge
                                                         variant={
                                                             user.anonymizedAt
-                                                                ? 'outline'
+                                                                ? 'warning'
                                                                 : user.deletedAt
                                                                   ? 'outline'
-                                                                  : 'secondary'
+                                                                  : 'success'
                                                         }
                                                     >
                                                         {user.anonymizedAt
@@ -579,10 +579,10 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                                                     variant={
                                                                         role ===
                                                                         'Admin'
-                                                                            ? 'default'
+                                                                            ? 'warning'
                                                                             : role ===
                                                                                 'Moderator'
-                                                                              ? 'secondary'
+                                                                              ? 'info'
                                                                               : 'outline'
                                                                     }
                                                                 >
