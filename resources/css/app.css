@@ -1,0 +1,377 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.87 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.87 0 0);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.985 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        background: white !important;
+        color: black !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    [data-slot='sidebar-wrapper'] > [data-slot='sidebar'],
+    [data-sidebar='sidebar'],
+    [data-sidebar='rail'],
+    [data-slot='sidebar-trigger'],
+    header {
+        display: none !important;
+    }
+
+    [data-slot='sidebar-wrapper'] {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    [data-slot='sidebar-inset'] {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        border-radius: 0 !important;
+    }
+
+    [data-slot='card'] {
+        break-inside: avoid;
+        box-shadow: none !important;
+    }
+
+    button {
+        break-inside: avoid;
+    }
+
+    .statistics-print {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        font-size: 8pt;
+        line-height: 1.15;
+        color: #111 !important;
+    }
+
+    .statistics-print header {
+        display: flex !important;
+    }
+
+    .statistics-print-header {
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8mm;
+        padding-bottom: 2.5mm;
+        border-bottom: 0.35mm solid #111;
+    }
+
+    .statistics-print-header h1 {
+        margin: 0 0 0.8mm;
+        font-size: 15pt;
+        line-height: 1;
+    }
+
+    .statistics-print-header p {
+        margin: 0;
+        color: #444;
+    }
+
+    .statistics-print-filter {
+        max-width: 58%;
+        text-align: right;
+        font-size: 7pt;
+    }
+
+    .statistics-print-totals {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 2mm;
+        margin-top: 2.5mm;
+    }
+
+    .statistics-print-totals > div {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        gap: 0.5mm 2mm;
+        padding: 1.8mm 2.2mm;
+        border: 0.25mm solid #aaa;
+        border-radius: 1.5mm;
+    }
+
+    .statistics-print-totals span,
+    .statistics-print-totals small {
+        color: #555;
+    }
+
+    .statistics-print-totals strong {
+        grid-row: span 2;
+        font-size: 14pt;
+        line-height: 1;
+    }
+
+    .statistics-print-totals small {
+        font-size: 6.5pt;
+    }
+
+    .statistics-print-section {
+        min-width: 0;
+        margin-top: 2.5mm;
+        padding: 2mm;
+        border: 0.25mm solid #aaa;
+        border-radius: 1.5mm;
+        break-inside: avoid;
+    }
+
+    .statistics-print-section h2 {
+        margin: 0 0 1.5mm;
+        font-size: 9pt;
+        line-height: 1;
+    }
+
+    .statistics-print-section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .statistics-print-days {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 1.2mm;
+    }
+
+    .statistics-print-days > div {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.5mm 1mm;
+        padding: 1mm 1.3mm;
+        background: #f3f3f3;
+        border-radius: 1mm;
+    }
+
+    .statistics-print-days small {
+        color: #666;
+        font-size: 6pt;
+    }
+
+    .statistics-print-bar {
+        grid-column: 1 / -1;
+        height: 0.8mm;
+        overflow: hidden;
+        background: #ddd;
+        border-radius: 1mm;
+    }
+
+    .statistics-print-bar > span {
+        display: block;
+        height: 100%;
+        background: #222;
+    }
+
+    .statistics-print-semester-weeks > div {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(7, auto);
+        grid-auto-columns: minmax(0, 1fr);
+        gap: 0.6mm 2.5mm;
+    }
+
+    .statistics-print-semester-weeks p {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: baseline;
+        gap: 1mm;
+        margin: 0;
+        padding-bottom: 0.4mm;
+        border-bottom: 0.15mm solid #ddd;
+        white-space: nowrap;
+    }
+
+    .statistics-print-semester-weeks small {
+        overflow: hidden;
+        color: #666;
+        font-size: 5.8pt;
+        text-overflow: ellipsis;
+    }
+
+    .statistics-print-breakdowns {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2mm;
+    }
+
+    .statistics-print-breakdown {
+        display: grid;
+        gap: 1mm;
+    }
+
+    .statistics-print-row-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 2mm;
+        margin-bottom: 0.4mm;
+    }
+
+    .statistics-print-row-label span {
+        overflow-wrap: anywhere;
+    }
+
+    .statistics-print-empty {
+        margin: 0;
+        color: #666;
+        font-style: italic;
+    }
+}
