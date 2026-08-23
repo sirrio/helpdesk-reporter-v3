@@ -17,12 +17,14 @@ type Props = {
     canManageTwoFactor?: boolean;
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
+    mustChangePassword?: boolean;
 };
 
 export default function Security({
     canManageTwoFactor = false,
     requiresConfirmation = false,
     twoFactorEnabled = false,
+    mustChangePassword = false,
 }: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
@@ -56,6 +58,13 @@ export default function Security({
             <h1 className="sr-only">Security settings</h1>
 
             <div className="space-y-6">
+                {mustChangePassword && (
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+                        Dein aktuelles Passwort wurde administrativ vergeben.
+                        Lege jetzt ein eigenes Passwort fest, bevor du die
+                        Anwendung weiter verwendest.
+                    </div>
+                )}
                 <Heading
                     variant="small"
                     title="Update password"

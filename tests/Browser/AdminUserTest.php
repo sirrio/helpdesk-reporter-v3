@@ -55,6 +55,7 @@ it('creates a new user', function () {
     $this->assertDatabaseHas('users', [
         'name' => 'Max Mustermann',
         'email' => 'max@example.com',
+        'must_change_password' => true,
     ]);
 });
 
@@ -70,6 +71,21 @@ it('shows validation errors when creating user with duplicate email', function (
         ->click('button:has-text("Benutzer speichern")')
         ->assertSee('Benutzer speichern')
         ->assertNoJavaScriptErrors();
+});
+
+it('approves a pending registration from the admin page', function () {
+    $pendingUser = User::factory()->pendingApproval()->create([
+        'name' => 'Wartender Tutor',
+    ]);
+
+    $page = visit('/admin/users')->resize(390, 844);
+
+    $page->assertSee('Freischaltung ausstehend')
+        ->click('article:has-text("Wartender Tutor") button:has-text("Freischalten")')
+        ->assertSee('Freigeschaltet am')
+        ->assertNoJavaScriptErrors();
+
+    expect($pendingUser->refresh()->approved_at)->not->toBeNull();
 });
 
 it('deactivates and reactivates a user from the admin page', function () {

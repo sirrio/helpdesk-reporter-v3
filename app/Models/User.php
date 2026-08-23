@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password', 'isMod', 'isAdmin', 'email_verified_at'])]
+#[Fillable(['name', 'email', 'password', 'approved_at', 'must_change_password', 'isMod', 'isAdmin', 'email_verified_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,6 +29,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'must_change_password' => 'boolean',
             'isMod' => 'boolean',
             'isAdmin' => 'boolean',
             'password' => 'hashed',
@@ -61,6 +62,8 @@ class User extends Authenticatable
             'email' => 'anonymized-'.Str::uuid().'@example.invalid',
             'password' => Str::random(64),
             'email_verified_at' => null,
+            'approved_at' => null,
+            'must_change_password' => false,
             'remember_token' => null,
             'isMod' => false,
             'isAdmin' => false,

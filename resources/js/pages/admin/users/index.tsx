@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import {
+    CircleCheckBig,
     Mail,
     PencilLine,
     Plus,
@@ -12,6 +13,7 @@ import {
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
+    approve as approveAdminUser,
     destroy as destroyAdminUser,
     index as adminUsersIndex,
     restore as restoreAdminUser,
@@ -60,7 +62,8 @@ type ManagedUser = {
     email: string;
     isMod: boolean;
     isAdmin: boolean;
-    emailVerifiedAt: string | null;
+    approvedAt: string | null;
+    mustChangePassword: boolean;
     createdAt: string | null;
     attendancesCount: number;
     isCurrentUser: boolean;
@@ -86,6 +89,7 @@ const roleOptions = [
 const statusOptions = [
     { value: FILTER_ALL, label: 'Alle Status' },
     { value: 'active', label: 'Aktiv' },
+    { value: 'pending', label: 'Wartet auf Freischaltung' },
     { value: 'deactivated', label: 'Deaktiviert' },
     { value: 'anonymized', label: 'Anonymisiert' },
 ];
@@ -240,6 +244,15 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
         });
     }
 
+    function approveUser(user: ManagedUser): void {
+        router.visit(approveAdminUser(user.id), {
+            method: 'patch',
+            preserveScroll: true,
+            onStart: () => setIsStatusActionProcessing(true),
+            onFinish: () => setIsStatusActionProcessing(false),
+        });
+    }
+
     return (
         <>
             <Head title="Benutzerverwaltung" />
@@ -256,12 +269,12 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                         <p className="max-w-3xl text-xs text-muted-foreground">
                             Moderator:innen können alle Einträge und Statistiken
                             einsehen und Einträge korrigieren. Admins verwalten
-                            zusätzlich Benutzer:innen und Stammdaten.
-                            „Verifiziert“ bedeutet, dass die E-Mail-Adresse
-                            bestätigt wurde; administrativ angelegte Konten
-                            gelten direkt als bestätigt. Deaktivierte Accounts
-                            können sich nicht mehr anmelden; ihre bisherigen
-                            Einträge bleiben erhalten.
+                            zusätzlich Benutzer:innen und Stammdaten. Selbst
+                            registrierte Konten warten auf eine Freischaltung
+                            durch Admins. Deaktivierte Accounts können sich
+                            nicht mehr anmelden; ihre bisherigen Einträge
+                            bleiben erhalten. Ein administrativ gesetztes
+                            Passwort muss beim nächsten Login ersetzt werden.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -280,8 +293,9 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                 <DialogHeader>
                                     <DialogTitle>Benutzer anlegen</DialogTitle>
                                     <DialogDescription>
-                                        Neue Accounts werden direkt verifiziert
-                                        angelegt.
+                                        Der Account ist direkt freigeschaltet.
+                                        Das hier vergebene temporäre Passwort
+                                        muss beim ersten Login ersetzt werden.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <form
@@ -330,11 +344,12 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="create-password">
-                                                Passwort
+                                                Temporäres Passwort
                                             </Label>
                                             <Input
                                                 id="create-password"
                                                 type="password"
+                                                autoComplete="new-password"
                                                 value={createForm.data.password}
                                                 onChange={(event) =>
                                                     createForm.setData(
@@ -562,14 +577,18 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                                                 ? 'warning'
                                                                 : user.deletedAt
                                                                   ? 'outline'
-                                                                  : 'success'
+                                                                  : !user.approvedAt
+                                                                    ? 'warning'
+                                                                    : 'success'
                                                         }
                                                     >
                                                         {user.anonymizedAt
                                                             ? 'Anonymisiert'
                                                             : user.deletedAt
                                                               ? 'Deaktiviert'
-                                                              : 'Aktiv'}
+                                                              : !user.approvedAt
+                                                                ? 'Freischaltung ausstehend'
+                                                                : 'Aktiv'}
                                                     </Badge>
                                                     {!user.anonymizedAt &&
                                                         roleLabels(user).map(
@@ -608,9 +627,11 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span>
-                                                            {user.emailVerifiedAt
-                                                                ? 'Verifiziert'
-                                                                : 'Unverifiziert'}
+                                                            {user.mustChangePassword
+                                                                ? 'Passwortwechsel ausstehend'
+                                                                : user.approvedAt
+                                                                  ? `Freigeschaltet am ${formatDate(user.approvedAt)}`
+                                                                  : 'Noch nicht freigeschaltet'}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -638,6 +659,22 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                             <div className="flex flex-wrap gap-2">
                                                 {!user.deletedAt && (
                                                     <>
+                                                        {!user.approvedAt && (
+                                                            <Button
+                                                                type="button"
+                                                                disabled={
+                                                                    isStatusActionProcessing
+                                                                }
+                                                                onClick={() =>
+                                                                    approveUser(
+                                                                        user,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <CircleCheckBig className="size-4" />
+                                                                Freischalten
+                                                            </Button>
+                                                        )}
                                                         <Button
                                                             type="button"
                                                             variant="outline"
@@ -710,7 +747,8 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                     <DialogHeader>
                         <DialogTitle>Benutzer bearbeiten</DialogTitle>
                         <DialogDescription>
-                            Passe Stammdaten, Passwort und Rollen an.
+                            Passe Stammdaten und Rollen an oder vergebe ein
+                            temporäres Passwort.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={submitUpdate} className="space-y-5">
@@ -746,11 +784,12 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="edit-password">
-                                    Neues Passwort
+                                    Temporäres Passwort
                                 </Label>
                                 <Input
                                     id="edit-password"
                                     type="password"
+                                    autoComplete="new-password"
                                     value={editForm.data.password}
                                     onChange={(event) =>
                                         editForm.setData(
@@ -761,7 +800,9 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                                 />
                                 <p className="text-sm text-muted-foreground">
                                     Leer lassen, wenn es unverändert bleiben
-                                    soll.
+                                    soll. Nach einem Reset werden bestehende
+                                    Sitzungen und 2FA entfernt; beim nächsten
+                                    Login ist ein Passwortwechsel Pflicht.
                                 </p>
                                 <InputError
                                     message={editForm.errors.password}

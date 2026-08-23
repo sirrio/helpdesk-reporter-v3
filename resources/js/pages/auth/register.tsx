@@ -21,6 +21,11 @@ export default function Register() {
             >
                 {({ processing, errors }) => (
                     <>
+                        <p className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                            Nach der Registrierung prüft und aktiviert ein:e
+                            Administrator:in deinen Zugang. Bis dahin ist keine
+                            Anmeldung möglich.
+                        </p>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Name</Label>
@@ -109,6 +114,7 @@ export default function Register() {
 }
 
 Register.layout = {
-    title: 'Create an account',
-    description: 'Enter your details below to create your account',
+    title: 'Account erstellen',
+    description:
+        'Registriere dich und warte anschließend auf die Freischaltung',
 };

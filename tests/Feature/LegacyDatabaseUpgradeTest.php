@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -91,4 +92,12 @@ it('adds framework tables that were absent from legacy installations', function 
         ->and(Schema::hasTable('cache_locks'))->toBeTrue()
         ->and(Schema::hasTable('jobs'))->toBeTrue()
         ->and(Schema::hasTable('job_batches'))->toBeTrue();
+});
+
+it('approves users that existed before the approval workflow was introduced', function () {
+    $existingUser = User::factory()->pendingApproval()->create();
+
+    (require database_path('migrations/2026_08_23_205130_approve_existing_users.php'))->up();
+
+    expect($existingUser->refresh()->approved_at)->not->toBeNull();
 });

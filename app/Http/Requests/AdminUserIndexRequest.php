@@ -26,7 +26,7 @@ class AdminUserIndexRequest extends FormRequest
         return [
             'search' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', 'string', Rule::in(['admin', 'mod', 'tutor'])],
-            'status' => ['nullable', 'string', Rule::in(['active', 'deactivated', 'anonymized'])],
+            'status' => ['nullable', 'string', Rule::in(['active', 'pending', 'deactivated', 'anonymized'])],
         ];
     }
 }

@@ -12,7 +12,7 @@ beforeEach(function () {
 });
 
 it('shows the statistics page with export button', function () {
-    $page = visit('/admin/statistics')->waitForEvent('networkidle');
+    $page = visit('/admin/statistics');
 
     $page->assertSee('Statistik')
         ->assertSee('Als CSV herunterladen')
