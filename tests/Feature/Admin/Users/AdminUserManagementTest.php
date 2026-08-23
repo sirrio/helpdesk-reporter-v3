@@ -47,6 +47,34 @@ it('allows admins to create a managed user', function () {
         'isMod' => false,
         'isAdmin' => false,
     ]);
+
+    $managedUser = User::query()->where('email', 'gamma@example.com')->firstOrFail();
+
+    expect($managedUser->approved_at)
+        ->not->toBeNull()
+        ->and($managedUser->must_change_password)->toBeTrue();
+});
+
+it('shows pending registrations and allows admins to approve them', function () {
+    $admin = User::factory()->admin()->create();
+    $pendingUser = User::factory()->pendingApproval()->create([
+        'name' => 'Pending Tutor',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.index', ['status' => 'pending']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.status', 'pending')
+            ->has('users.data', 1)
+            ->where('users.data.0.name', 'Pending Tutor')
+            ->where('users.data.0.approvedAt', null));
+
+    $this->actingAs($admin)
+        ->patch(route('admin.users.approve', $pendingUser))
+        ->assertRedirect(route('admin.users.index'));
+
+    expect($pendingUser->refresh()->approved_at)->not->toBeNull();
 });
 
 it('allows admins to update a managed user', function () {
@@ -75,6 +103,42 @@ it('allows admins to update a managed user', function () {
         'isMod' => true,
         'isAdmin' => false,
     ]);
+});
+
+it('turns an admin password reset into a required password change and revokes access state', function () {
+    config()->set('session.driver', 'database');
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->withTwoFactor()->create([
+        'remember_token' => 'remember-token',
+    ]);
+
+    DB::table('sessions')->insert([
+        'id' => 'reset-user-session',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'payload' => 'test',
+        'last_activity' => now()->timestamp,
+    ]);
+
+    $this->actingAs($admin)->put(route('admin.users.update', $user), [
+        'name' => $user->name,
+        'email' => $user->email,
+        'password' => 'temporary-password',
+        'isMod' => false,
+        'isAdmin' => false,
+    ])->assertRedirect(route('admin.users.index'));
+
+    $user->refresh();
+
+    expect($user->must_change_password)
+        ->toBeTrue()
+        ->and($user->remember_token)->toBeNull()
+        ->and($user->two_factor_secret)->toBeNull()
+        ->and($user->two_factor_recovery_codes)->toBeNull()
+        ->and($user->two_factor_confirmed_at)->toBeNull();
+    $this->assertDatabaseMissing('sessions', ['id' => 'reset-user-session']);
 });
 
 it('prevents admins from removing their own admin role', function () {

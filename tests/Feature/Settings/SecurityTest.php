@@ -21,6 +21,7 @@ test('security page is displayed', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('settings/security')
             ->where('canManageTwoFactor', true)
+            ->where('mustChangePassword', false)
             ->where('twoFactorEnabled', false),
         );
 });
@@ -78,7 +79,7 @@ test('security page renders without two factor when feature is disabled', functi
 });
 
 test('password can be updated', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['must_change_password' => true]);
 
     $response = $this
         ->actingAs($user)
@@ -93,7 +94,17 @@ test('password can be updated', function () {
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('security.edit'));
 
-    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+    expect(Hash::check('new-password', $user->refresh()->password))
+        ->toBeTrue()
+        ->and($user->must_change_password)->toBeFalse();
+});
+
+test('users with a temporary password are redirected to the security page', function () {
+    $user = User::factory()->create(['must_change_password' => true]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertRedirect(route('security.edit'));
 });
 
 test('correct password must be provided to update password', function () {

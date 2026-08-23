@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
 test('login screen can be rendered', function () {
@@ -20,6 +21,31 @@ test('users can authenticate using the login screen', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
+});
+
+test('users waiting for approval cannot authenticate', function () {
+    $user = User::factory()->pendingApproval()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+    $response->assertSessionHasErrors([
+        'email' => 'Dein Account wartet noch auf die Freischaltung durch eine:n Administrator:in.',
+    ]);
+});
+
+test('mail based authentication recovery and verification routes are disabled', function () {
+    expect(Route::has('password.request'))
+        ->toBeFalse()
+        ->and(Route::has('password.email'))->toBeFalse()
+        ->and(Route::has('password.reset'))->toBeFalse()
+        ->and(Route::has('password.update'))->toBeFalse()
+        ->and(Route::has('verification.notice'))->toBeFalse()
+        ->and(Route::has('verification.send'))->toBeFalse()
+        ->and(Route::has('verification.verify'))->toBeFalse();
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

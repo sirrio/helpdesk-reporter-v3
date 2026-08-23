@@ -18,7 +18,7 @@ Route::get('/', function (Request $request) {
     return redirect()->route('login');
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'approved', 'password.changed'])->group(function () {
     Route::redirect('dashboard', '/attendances')->name('dashboard');
     Route::get('attendances', [AttendanceController::class, 'index'])->name('attendances.index');
     Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
@@ -56,6 +56,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('admin/users/{user}/restore', [AdminUserController::class, 'restore'])
         ->middleware('can:manage-admin-users')
         ->name('admin.users.restore');
+    Route::patch('admin/users/{user}/approve', [AdminUserController::class, 'approve'])
+        ->middleware('can:manage-admin-users')
+        ->name('admin.users.approve');
     Route::get('admin/semesters', [AdminSemesterController::class, 'index'])
         ->middleware('can:manage-semesters')
         ->name('admin.semesters.index');

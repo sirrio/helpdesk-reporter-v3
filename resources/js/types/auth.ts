@@ -4,6 +4,8 @@ export type User = {
     email: string;
     avatar?: string;
     email_verified_at: string | null;
+    approved_at: string | null;
+    must_change_password: boolean;
     isMod: boolean;
     isAdmin: boolean;
     two_factor_enabled?: boolean;

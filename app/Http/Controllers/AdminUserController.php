@@ -59,7 +59,15 @@ class AdminUserController extends Controller
             )
             ->when(
                 ($filters['status'] ?? null) === 'active',
-                fn ($query) => $query->whereNull('deleted_at'),
+                fn ($query) => $query
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('approved_at'),
+            )
+            ->when(
+                ($filters['status'] ?? null) === 'pending',
+                fn ($query) => $query
+                    ->whereNull('deleted_at')
+                    ->whereNull('approved_at'),
             )
             ->when(
                 ($filters['status'] ?? null) === 'deactivated',
@@ -73,6 +81,7 @@ class AdminUserController extends Controller
             )
             ->orderByDesc('isAdmin')
             ->orderByDesc('isMod')
+            ->orderBy('approved_at')
             ->orderBy('deleted_at')
             ->orderBy('name')
             ->paginate(15)
@@ -83,7 +92,8 @@ class AdminUserController extends Controller
                 'email' => $user->email,
                 'isMod' => $user->isMod,
                 'isAdmin' => $user->isAdmin,
-                'emailVerifiedAt' => $user->email_verified_at?->toISOString(),
+                'approvedAt' => $user->approved_at?->toISOString(),
+                'mustChangePassword' => $user->must_change_password,
                 'createdAt' => $user->created_at?->toISOString(),
                 'attendancesCount' => $user->attendances_count,
                 'isCurrentUser' => $request->user()->is($user),
@@ -127,7 +137,8 @@ class AdminUserController extends Controller
             'password' => $validated['password'],
             'isMod' => (bool) ($validated['isMod'] || $validated['isAdmin']),
             'isAdmin' => (bool) $validated['isAdmin'],
-            'email_verified_at' => now(),
+            'approved_at' => now(),
+            'must_change_password' => true,
         ]);
 
         Inertia::flash('toast', [
@@ -145,25 +156,39 @@ class AdminUserController extends Controller
     {
         $validated = $request->validated();
 
-        $user->fill([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'isMod' => (bool) ($validated['isMod'] || $validated['isAdmin']),
-            'isAdmin' => (bool) $validated['isAdmin'],
-            'email_verified_at' => $user->email === $validated['email']
-                ? ($user->email_verified_at ?? now())
-                : now(),
-        ]);
+        $passwordWasReset = filled($validated['password'] ?? null);
 
-        if (filled($validated['password'] ?? null)) {
-            $user->password = $validated['password'];
-        }
+        DB::transaction(function () use ($user, $validated, $passwordWasReset): void {
+            $user->fill([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'isMod' => (bool) ($validated['isMod'] || $validated['isAdmin']),
+                'isAdmin' => (bool) $validated['isAdmin'],
+            ]);
 
-        $user->save();
+            if ($passwordWasReset) {
+                $user->forceFill([
+                    'password' => $validated['password'],
+                    'must_change_password' => true,
+                    'remember_token' => null,
+                    'two_factor_secret' => null,
+                    'two_factor_recovery_codes' => null,
+                    'two_factor_confirmed_at' => null,
+                ]);
+            }
+
+            $user->save();
+
+            if ($passwordWasReset) {
+                $this->deleteSessionsFor($user);
+            }
+        });
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('Benutzer aktualisiert.'),
+            'message' => $passwordWasReset
+                ? __('Benutzer aktualisiert. Das temporäre Passwort muss beim nächsten Login geändert werden.')
+                : __('Benutzer aktualisiert.'),
         ]);
 
         return to_route('admin.users.index');
@@ -222,6 +247,36 @@ class AdminUserController extends Controller
         ]);
 
         return to_route('admin.users.index');
+    }
+
+    /**
+     * Approve a newly registered user account.
+     */
+    public function approve(User $user): RedirectResponse
+    {
+        $user->update(['approved_at' => now()]);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Benutzer freigeschaltet.'),
+        ]);
+
+        return to_route('admin.users.index');
+    }
+
+    /**
+     * Remove all database-backed sessions for a managed user.
+     */
+    private function deleteSessionsFor(User $user): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        DB::connection(config('session.connection'))
+            ->table(config('session.table'))
+            ->where('user_id', $user->getKey())
+            ->delete();
     }
 
     /**

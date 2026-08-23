@@ -32,6 +32,7 @@ class SecurityController extends Controller implements HasMiddleware
     {
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
+            'mustChangePassword' => $request->user()->must_change_password,
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {
@@ -51,9 +52,10 @@ class SecurityController extends Controller implements HasMiddleware
     {
         $request->user()->update([
             'password' => $request->password,
+            'must_change_password' => false,
         ]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Passwort aktualisiert.')]);
 
         return back();
     }

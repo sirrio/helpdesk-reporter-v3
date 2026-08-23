@@ -18,6 +18,16 @@ it('shows login page without JavaScript errors', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+it('explains the approval workflow on desktop and mobile registration', function () {
+    foreach ([[1280, 900], [390, 844]] as [$width, $height]) {
+        $page = visit('/register')->resize($width, $height);
+
+        $page->assertSee('Freischaltung')
+            ->assertSee('keine Anmeldung möglich')
+            ->assertNoJavaScriptErrors();
+    }
+});
+
 it('shows validation errors on invalid login credentials', function () {
     $page = visit('/login');
 

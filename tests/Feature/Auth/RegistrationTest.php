@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -20,6 +21,14 @@ test('new users can register', function () {
         'password_confirmation' => 'password',
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $this->assertGuest();
+    $response
+        ->assertRedirect(route('login'))
+        ->assertSessionHas('status');
+
+    $user = User::query()
+        ->where('email', 'test@example.com')
+        ->firstOrFail();
+
+    expect($user->approved_at)->toBeNull();
 });
