@@ -146,6 +146,7 @@ class AttendanceSeeder extends Seeder
                     'name' => $tutor['name'],
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
+                    'approved_at' => now(),
                     'isMod' => false,
                     'isAdmin' => false,
                 ],

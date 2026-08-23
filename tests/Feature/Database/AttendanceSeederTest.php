@@ -27,4 +27,6 @@ it('seeds at least three tutors with helpdesk entries', function () {
             ->distinct('user_id')
             ->count('user_id'),
     )->toBeGreaterThanOrEqual(3);
+
+    expect(User::query()->whereNull('approved_at')->count())->toBe(0);
 });
