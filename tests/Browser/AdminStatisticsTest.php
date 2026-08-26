@@ -47,6 +47,8 @@ it('renders a dedicated compact print overview', function () {
     $page = visit('/admin/statistics');
 
     $page->assertPresent('[data-testid="statistics-print-layout"]')
+        ->assertPresent('[data-testid="statistics-print-document"] > thead')
+        ->assertPresent('[data-testid="statistics-print-header"]')
         ->assertPresent('[data-testid="statistics-print-totals"]')
         ->assertPresent('[data-testid="statistics-print-current-week"]')
         ->assertPresent('[data-testid="statistics-print-breakdowns"]')
