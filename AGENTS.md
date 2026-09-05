@@ -18,12 +18,13 @@ migration, and Forge deployment requirements.
 ## Verification
 
 - Use PHP 8.4 or newer and Node.js 22.19 or newer.
-- Run `composer ci:check` for frontend linting and formatting checks, TypeScript,
-  Pint, and the complete Pest test suite.
-- Run `npm audit --audit-level=high` and `npm run build` before a release-ready
-  commit or pull request.
-- Run the relevant Pest browser tests on desktop and mobile when visible UI or
-  interaction behavior changes.
+- In the Coding phase, run only the checks covering the changed behavior; for
+  PHP use `php artisan test --compact` with a specific file or filter.
+- In the explicitly authorized PR phase, run `composer ci:check` for frontend
+  linting and formatting checks, TypeScript, Pint, and the complete Pest suite,
+  plus `npm audit --audit-level=high` and `npm run build`.
+- For visible UI or interaction changes, run the affected Pest browser tests
+  on desktop and mobile in Coding; run the full relevant browser coverage in PR.
 - Test new production migrations both on a fresh database and through the
   supported legacy upgrade path.
 
@@ -78,11 +79,11 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Frontend Bundling
 
-- If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+- If a frontend change is not visible, inspect the asset build and documented local service state first. Run a needed one-off `npm run build` within scope; if a required persistent service is missing, provide its documented start command and wait for the user to start it under the global service policy.
 
 ## Documentation Files
 
-- You must only create documentation files if explicitly requested by the user.
+- Create documentation required by the authorized change, including durable project rules and necessary release documentation. Do not create additional unsolicited documentation.
 
 ## Replies
 
@@ -146,20 +147,20 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 # Deployment
 
-- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
+- This application uses the Forge deployment contract above. Framework deployment examples do not authorize changing hosting or triggering production deployment.
 
 === herd rules ===
 
 # Laravel Herd
 
-- The application is served by Laravel Herd at `https?://[kebab-case-project-dir].test`. Use the `get-absolute-url` tool to generate valid URLs. Never run commands to serve the site. It is always available.
-- Use the `herd` CLI to manage services, PHP versions, and sites (e.g. `herd sites`, `herd services:start <service>`, `herd php:list`). Run `herd list` to discover all available commands.
+- Laravel Herd serves the local application at `https?://[kebab-case-project-dir].test`. Resolve its URL with `get-absolute-url` and verify availability before integration or browser tests; do not assume the service is running.
+- Use read-only Herd discovery such as `herd sites`, `herd php:list`, and `herd list` as needed. Persistent service lifecycle remains user-managed under the global policy.
 
 === tests rules ===
 
 # Test Enforcement
 
-- Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
+- Every behavior change needs appropriate automated coverage. Reuse sufficient existing tests; add or update tests when coverage is missing. Documentation-only changes need relevant content, reference, and diff checks, not artificial test edits.
 - Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
 
 === inertia-laravel/core rules ===
@@ -195,7 +196,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ### Model Creation
 
-- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
+- When creating models, create the factories, seeders, and related files needed by the authorized behavior and tests. Check `php artisan make:model --help` for available options. Resolve routine implementation details from existing conventions; ask only when a missing requirement materially affects the result.
 
 ## APIs & Eloquent Resources
 
@@ -225,8 +226,10 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 
 # Laravel Pint Code Formatter
 
-- If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
-- Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
+- After PHP changes, run `vendor/bin/pint --format agent <owned-file-paths>`
+  on the PHP files changed for this task. Use `--dirty` only when every selected
+  dirty PHP file belongs to this task; never format unrelated work.
+- Use read-only formatting checks through the phase-appropriate quality gates.
 
 === pest/core rules ===
 
