@@ -10,6 +10,7 @@ use App\Models\Degree;
 use App\Models\Faculty;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +19,7 @@ class AdminDegreeController extends Controller
     /**
      * Display the degree management page.
      */
-    public function index(AdminDegreeIndexRequest $request): Response
+    public function index(AdminDegreeIndexRequest $request): Response|RedirectResponse
     {
         $filters = $request->safe()->only(['status']);
 
@@ -26,6 +27,7 @@ class AdminDegreeController extends Controller
             ->withTrashed()
             ->with('faculty:id,name')
             ->withCount('attendances')
+            ->withExists(['attendances as has_attendance_history' => fn ($query) => $query->withTrashed()])
             ->when(
                 ($filters['status'] ?? 'all') === 'active',
                 fn ($query) => $query->whereNull('deleted_at'),
@@ -36,15 +38,24 @@ class AdminDegreeController extends Controller
             )
             ->orderBy('name')
             ->paginate(15)
-            ->withQueryString()
-            ->through(fn (Degree $degree) => [
-                'id' => $degree->id,
-                'name' => $degree->name,
-                'facultyId' => $degree->faculty_id,
-                'faculty' => $degree->faculty?->name,
-                'attendancesCount' => $degree->attendances_count,
-                'deletedAt' => $degree->deleted_at?->toISOString(),
+            ->withQueryString();
+
+        if ($degrees->currentPage() > $degrees->lastPage()) {
+            return to_route('admin.degrees.index', [
+                ...$filters,
+                'page' => $degrees->lastPage(),
             ]);
+        }
+
+        $degrees->through(fn (Degree $degree) => [
+            'id' => $degree->id,
+            'name' => $degree->name,
+            'facultyId' => $degree->faculty_id,
+            'faculty' => $degree->faculty?->name,
+            'attendancesCount' => $degree->attendances_count,
+            'deletedAt' => $degree->deleted_at?->toISOString(),
+            'canDelete' => $degree->trashed() && ! $degree->has_attendance_history,
+        ]);
 
         return Inertia::render('admin/degrees/index', [
             'degrees' => $degrees,
@@ -77,6 +88,7 @@ class AdminDegreeController extends Controller
      */
     public function update(UpdateDegreeRequest $request, Degree $degree): RedirectResponse
     {
+        $context = AdminDegreeIndexRequest::queryContext($request);
         $validated = $request->validated();
         $validated['faculty_id'] = (int) $validated['faculty_id'];
         $originalName = $degree->name;
@@ -100,13 +112,13 @@ class AdminDegreeController extends Controller
             'message' => __('Studiengang aktualisiert.'),
         ]);
 
-        return to_route('admin.degrees.index');
+        return to_route('admin.degrees.index', $context);
     }
 
     /**
      * Archive a degree.
      */
-    public function destroy(Degree $degree): RedirectResponse
+    public function destroy(AdminDegreeIndexRequest $request, Degree $degree): RedirectResponse
     {
         $degree->delete();
 
@@ -115,13 +127,13 @@ class AdminDegreeController extends Controller
             'message' => __('Studiengang archiviert.'),
         ]);
 
-        return to_route('admin.degrees.index');
+        return to_route('admin.degrees.index', $request->validated());
     }
 
     /**
      * Restore an archived degree.
      */
-    public function restore(int $degree): RedirectResponse
+    public function restore(AdminDegreeIndexRequest $request, int $degree): RedirectResponse
     {
         Degree::withTrashed()->findOrFail($degree)->restore();
 
@@ -130,6 +142,32 @@ class AdminDegreeController extends Controller
             'message' => __('Studiengang wiederhergestellt.'),
         ]);
 
-        return to_route('admin.degrees.index');
+        return to_route('admin.degrees.index', $request->validated());
+    }
+
+    public function forceDestroy(AdminDegreeIndexRequest $request, int $degree): RedirectResponse
+    {
+        $degree = Degree::withTrashed()->findOrFail($degree);
+
+        if (! $degree->trashed()) {
+            throw ValidationException::withMessages([
+                'degree' => __('Nur archivierte Studiengänge können endgültig gelöscht werden.'),
+            ]);
+        }
+
+        if ($degree->attendances()->withTrashed()->exists()) {
+            throw ValidationException::withMessages([
+                'degree' => __('Studiengänge mit zugeordneten Einsätzen können nicht gelöscht werden.'),
+            ]);
+        }
+
+        $degree->forceDelete();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Studiengang endgültig gelöscht.'),
+        ]);
+
+        return to_route('admin.degrees.index', $request->validated());
     }
 }

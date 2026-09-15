@@ -89,6 +89,9 @@ Route::middleware(['auth', 'approved', 'password.changed'])->group(function () {
     Route::patch('admin/degrees/{degree}/restore', [AdminDegreeController::class, 'restore'])
         ->middleware('can:manage-degrees')
         ->name('admin.degrees.restore');
+    Route::delete('admin/degrees/{degree}/force', [AdminDegreeController::class, 'forceDestroy'])
+        ->middleware('can:manage-degrees')
+        ->name('admin.degrees.force-destroy');
     Route::get('admin/faculties', [AdminFacultyController::class, 'index'])
         ->middleware('can:manage-faculties')
         ->name('admin.faculties.index');

@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class AdminDegreeIndexRequest extends FormRequest
 {
@@ -24,6 +26,15 @@ class AdminDegreeIndexRequest extends FormRequest
     {
         return [
             'status' => ['nullable', 'in:active,archived,all'],
+            'page' => ['nullable', 'integer', 'min:1'],
         ];
+    }
+
+    /**
+     * @return array{status?: string|null, page?: int|string|null}
+     */
+    public static function queryContext(Request $request): array
+    {
+        return Validator::make($request->query(), (new self)->rules())->validate();
     }
 }

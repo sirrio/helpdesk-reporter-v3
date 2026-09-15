@@ -5,11 +5,13 @@ import {
     PencilLine,
     Plus,
     RotateCcw,
+    Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
     destroy as destroyDegree,
+    forceDestroy as forceDestroyDegree,
     index as adminDegreesIndex,
     restore as restoreDegree,
     store as storeDegree,
@@ -50,13 +52,18 @@ type DegreeItem = {
     faculty: string | null;
     attendancesCount: number;
     deletedAt: string | null;
+    canDelete: boolean;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
 type Filters = { status: string };
 type FacultyOption = { id: number; name: string };
 type Props = {
-    degrees: { data: DegreeItem[]; links: PaginationLink[] };
+    degrees: {
+        data: DegreeItem[];
+        links: PaginationLink[];
+        current_page: number;
+    };
     filters: Filters;
     faculties: FacultyOption[];
 };
@@ -70,7 +77,13 @@ export default function AdminDegreesIndex({
 }: Props) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [editingDegree, setEditingDegree] = useState<DegreeItem | null>(null);
-    const filterForm = useForm<Filters>(filters);
+    const [deletingDegree, setDeletingDegree] = useState<DegreeItem | null>(
+        null,
+    );
+    const deleteForm = useForm({});
+    const listContext = {
+        query: { status: filters.status, page: degrees.current_page },
+    };
     const createForm = useForm({
         name: '',
         faculty_id: '',
@@ -107,7 +120,7 @@ export default function AdminDegreesIndex({
             return;
         }
 
-        editForm.submit(updateDegree(editingDegree.id), {
+        editForm.submit(updateDegree(editingDegree.id, listContext), {
             preserveScroll: true,
             onSuccess: () => setEditingDegree(null),
         });
@@ -129,7 +142,11 @@ export default function AdminDegreesIndex({
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <Select
-                            value={filterForm.data.status || ALL}
+                            value={
+                                filters.status && filters.status !== 'all'
+                                    ? filters.status
+                                    : ALL
+                            }
                             onValueChange={(value) =>
                                 router.visit(
                                     adminDegreesIndex({
@@ -145,7 +162,10 @@ export default function AdminDegreesIndex({
                                 )
                             }
                         >
-                            <SelectTrigger className="w-full sm:w-44">
+                            <SelectTrigger
+                                aria-label="Studiengänge filtern"
+                                className="w-full sm:w-44"
+                            >
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -333,6 +353,7 @@ export default function AdminDegreesIndex({
                                                                 router.visit(
                                                                     destroyDegree(
                                                                         degree.id,
+                                                                        listContext,
                                                                     ),
                                                                     {
                                                                         method: 'delete',
@@ -354,6 +375,7 @@ export default function AdminDegreesIndex({
                                                             router.visit(
                                                                 restoreDegree(
                                                                     degree.id,
+                                                                    listContext,
                                                                 ),
                                                                 {
                                                                     method: 'patch',
@@ -366,6 +388,34 @@ export default function AdminDegreesIndex({
                                                         Wiederherstellen
                                                     </Button>
                                                 )}
+                                                {degree.deletedAt && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        disabled={
+                                                            !degree.canDelete
+                                                        }
+                                                        onClick={() => {
+                                                            deleteForm.clearErrors();
+                                                            setDeletingDegree(
+                                                                degree,
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                        Löschen
+                                                    </Button>
+                                                )}
+                                                {degree.deletedAt &&
+                                                    !degree.canDelete && (
+                                                        <p className="w-full text-xs text-muted-foreground">
+                                                            Studiengänge mit
+                                                            Einsätzen bleiben
+                                                            für bestehende
+                                                            Auswertungen
+                                                            erhalten.
+                                                        </p>
+                                                    )}
                                             </div>
                                         </div>
                                     </article>
@@ -416,6 +466,60 @@ export default function AdminDegreesIndex({
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog
+                open={deletingDegree !== null}
+                onOpenChange={(open) =>
+                    !open && !deleteForm.processing && setDeletingDegree(null)
+                }
+            >
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>
+                            Studiengang endgültig löschen?
+                        </DialogTitle>
+                        <DialogDescription>
+                            „{deletingDegree?.name}“ wird endgültig gelöscht.
+                            Das kann nicht rückgängig gemacht werden.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <InputError
+                        message={
+                            (deleteForm.errors as { degree?: string }).degree
+                        }
+                    />
+                    <div className="flex flex-wrap gap-3">
+                        <Button
+                            variant="destructive"
+                            disabled={deleteForm.processing}
+                            onClick={() => {
+                                if (deletingDegree) {
+                                    deleteForm.submit(
+                                        forceDestroyDegree(
+                                            deletingDegree.id,
+                                            listContext,
+                                        ),
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () =>
+                                                setDeletingDegree(null),
+                                        },
+                                    );
+                                }
+                            }}
+                        >
+                            Endgültig löschen
+                        </Button>
+                        <Button
+                            variant="outline"
+                            disabled={deleteForm.processing}
+                            onClick={() => setDeletingDegree(null)}
+                        >
+                            Abbrechen
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={editingDegree !== null}
