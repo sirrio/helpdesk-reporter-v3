@@ -45,7 +45,7 @@ it('allows admins to create semesters', function () {
     ]);
 });
 
-it('updates semester labels and keeps attendance references in sync', function () {
+it('updates semester labels and keeps attendance references in sync', function (bool $archivedAttendance) {
     $admin = User::factory()->admin()->create();
     $tutor = User::factory()->create();
     $semester = Semester::factory()->create([
@@ -56,12 +56,16 @@ it('updates semester labels and keeps attendance references in sync', function (
     $degree = Degree::factory()->create(['name' => 'Informatik']);
     $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
 
-    Attendance::factory()
+    $attendance = Attendance::factory()
         ->for($tutor)
         ->forSemester($semester)
         ->forDegree($degree)
         ->forFaculty($faculty)
         ->create();
+
+    if ($archivedAttendance) {
+        $attendance->delete();
+    }
 
     $response = $this->actingAs($admin)->put(route('admin.semesters.update', $semester), [
         'semester' => 'WS 2026/2027',
@@ -80,7 +84,14 @@ it('updates semester labels and keeps attendance references in sync', function (
         'user_id' => $tutor->id,
         'semester' => 'WS 2026/2027',
     ]);
-});
+
+    expect($attendance->refresh()->trashed())->toBe($archivedAttendance);
+    if ($archivedAttendance) {
+        $attendance->restore();
+    }
+
+    expect($semester->refresh()->attendances()->sole()->id)->toBe($attendance->id);
+})->with([false, true]);
 
 it('archives and restores semesters', function () {
     $admin = User::factory()->admin()->create();
@@ -111,3 +122,49 @@ it('forbids non admins from semester management', function () {
         ->get(route('admin.semesters.index'))
         ->assertForbidden();
 });
+
+it('filters semesters by their archive status', function (string $status, int $count) {
+    $this->actingAs(User::factory()->admin()->create());
+    $active = Semester::factory()->create();
+    $archived = Semester::factory()->create(['deleted_at' => now()]);
+
+    $this->get(route('admin.semesters.index', ['status' => $status]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.status', $status)
+            ->has('semesters.data', $count)
+            ->when($status !== 'all', fn (Assert $page) => $page
+                ->where('semesters.data.0.id', $status === 'active' ? $active->id : $archived->id)));
+})->with(['active' => ['active', 1], 'archived' => ['archived', 1], 'all' => ['all', 2]]);
+
+it('preserves the semesters list context after changes', function (string $action, string $method) {
+    $this->actingAs(User::factory()->admin()->create());
+    $record = Semester::factory()->create(['deleted_at' => $action === 'restore' ? now() : null]);
+    $context = ['status' => $action === 'restore' ? 'archived' : 'active', 'page' => 2];
+    $parameters = $action === 'store' ? $context : [$record->id, ...$context];
+
+    $this->{$method}(route('admin.semesters.'.$action, $parameters), ['semester' => 'SS 2030', 'start' => '2030-04-01', 'end' => '2030-09-30'])
+        ->assertRedirect(route('admin.semesters.index', $context));
+})->with(['create' => ['store', 'post'], 'update' => ['update', 'put'], 'archive' => ['destroy', 'delete'], 'restore' => ['restore', 'patch']]);
+
+it('returns to the last existing semesters page', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    Semester::factory()->create();
+
+    $this->get(route('admin.semesters.index', ['status' => 'active', 'page' => 2]))
+        ->assertRedirect(route('admin.semesters.index', ['status' => 'active', 'page' => 1]));
+});
+
+it('rejects invalid semesters context before mutations', function (string $action, string $method) {
+    $this->actingAs(User::factory()->admin()->create());
+    $record = Semester::factory()->create(['deleted_at' => $action === 'restore' ? now() : null]);
+    $original = $record->fresh()->getAttributes();
+    $context = ['status' => 'invalid', 'page' => 0];
+    $parameters = $action === 'store' ? $context : [$record->id, ...$context];
+
+    $this->{$method}(route('admin.semesters.'.$action, $parameters), ['semester' => 'SS 2030', 'start' => '2030-04-01', 'end' => '2030-09-30'])
+        ->assertSessionHasErrors(['status', 'page']);
+
+    expect(Semester::withTrashed()->count())->toBe(1)
+        ->and($record->fresh()->getAttributes())->toBe($original);
+})->with(['create' => ['store', 'post'], 'update' => ['update', 'put'], 'archive' => ['destroy', 'delete'], 'restore' => ['restore', 'patch']]);

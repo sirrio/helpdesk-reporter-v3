@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AdminUserIndexRequest;
 use App\Http\Requests\RunUserAutomationCheckRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,8 @@ class AdminUserAutomationCheckController extends Controller
      */
     public function __invoke(RunUserAutomationCheckRequest $request): RedirectResponse
     {
+        $context = AdminUserIndexRequest::queryContext($request);
+
         SystemSetting::current()->forceFill([
             'automation_check_requested_at' => now(),
             'automation_check_token' => (string) Str::uuid(),
@@ -27,6 +30,6 @@ class AdminUserAutomationCheckController extends Controller
             'message' => __('Automatisierungstest gestartet.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $context);
     }
 }

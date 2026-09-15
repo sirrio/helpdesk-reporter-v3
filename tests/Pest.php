@@ -22,6 +22,8 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Browser');
 
+pest()->browser()->timeout(10000);
+
 // Browser tests must use the production build, not the Vite dev server.
 // If the hot file exists (dev server running), temporarily rename it away so
 // Laravel uses the built manifest instead of the Vite dev server URLs.

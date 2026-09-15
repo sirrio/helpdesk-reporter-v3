@@ -188,110 +188,161 @@ function PrintStatistics({ filters, formOptions, stats }: Props) {
             className="statistics-print hidden print:block"
             data-testid="statistics-print-layout"
         >
-            <header className="statistics-print-header">
-                <div>
-                    <h1>Helpdesk Reporter - Statistik</h1>
-                    <p>
-                        Auswertung {stats.weekly.label} ·{' '}
-                        {stats.weekly.rangeLabel}
-                    </p>
-                </div>
-                <p className="statistics-print-filter">
-                    {filterLabels.length > 0
-                        ? filterLabels.join(' · ')
-                        : 'Alle Einträge, keine Filter aktiv'}
-                </p>
-            </header>
-
-            <section
-                className="statistics-print-totals"
-                data-testid="statistics-print-totals"
+            <table
+                className="statistics-print-document"
+                data-testid="statistics-print-document"
             >
-                <div>
-                    <span>Beratungen</span>
-                    <strong>{stats.totals.entries}</strong>
-                    <small>{stats.totals.visitors} Besucher:innen</small>
-                </div>
-                <div>
-                    <span>Gesamtzeit</span>
-                    <strong>{stats.totals.hours} h</strong>
-                    <small>{stats.totals.minutes} Minuten</small>
-                </div>
-                <div>
-                    <span>Aktive Tutor:innen</span>
-                    <strong>{stats.totals.activeTutors}</strong>
-                    <small>{stats.totals.semesters} Semester</small>
-                </div>
-                <div>
-                    <span>Online-Anteil</span>
-                    <strong>{stats.totals.onlinePercentage}%</strong>
-                    <small>
-                        {stats.totals.onlineEntries} online /{' '}
-                        {stats.totals.presenceEntries} präsent
-                    </small>
-                </div>
-            </section>
+                <thead>
+                    <tr>
+                        <td>
+                            <header
+                                className="statistics-print-header"
+                                data-testid="statistics-print-header"
+                            >
+                                <div>
+                                    <h1>Helpdesk Reporter - Statistik</h1>
+                                    <p>
+                                        Auswertung {stats.weekly.label} ·{' '}
+                                        {stats.weekly.rangeLabel}
+                                    </p>
+                                </div>
+                                <p className="statistics-print-filter">
+                                    {filterLabels.length > 0
+                                        ? filterLabels.join(' · ')
+                                        : 'Alle Einträge, keine Filter aktiv'}
+                                </p>
+                            </header>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <section
+                                className="statistics-print-totals"
+                                data-testid="statistics-print-totals"
+                            >
+                                <div>
+                                    <span>Beratungen</span>
+                                    <strong>{stats.totals.entries}</strong>
+                                    <small>
+                                        {stats.totals.visitors} Besucher:innen
+                                    </small>
+                                </div>
+                                <div>
+                                    <span>Gesamtzeit</span>
+                                    <strong>{stats.totals.hours} h</strong>
+                                    <small>
+                                        {stats.totals.minutes} Minuten
+                                    </small>
+                                </div>
+                                <div>
+                                    <span>Aktive Tutor:innen</span>
+                                    <strong>{stats.totals.activeTutors}</strong>
+                                    <small>
+                                        {stats.totals.semesters} Semester
+                                    </small>
+                                </div>
+                                <div>
+                                    <span>Online-Anteil</span>
+                                    <strong>
+                                        {stats.totals.onlinePercentage}%
+                                    </strong>
+                                    <small>
+                                        {stats.totals.onlineEntries} online /{' '}
+                                        {stats.totals.presenceEntries} präsent
+                                    </small>
+                                </div>
+                            </section>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <section
+                                className="statistics-print-section statistics-print-current-week"
+                                data-testid="statistics-print-current-week"
+                            >
+                                <div className="statistics-print-section-heading">
+                                    <h2>Aktuelle Wochenübersicht</h2>
+                                    <strong>
+                                        {stats.weekly.totalEntries}{' '}
+                                        {stats.weekly.totalEntries === 1
+                                            ? 'Beratung'
+                                            : 'Beratungen'}
+                                    </strong>
+                                </div>
+                                <div className="statistics-print-days">
+                                    {stats.weekly.days.map((day) => (
+                                        <div key={day.date}>
+                                            <span>{day.label}</span>
+                                            <strong>{day.entries}</strong>
+                                            <small>{day.date.slice(5)}</small>
+                                            <div className="statistics-print-bar">
+                                                <span
+                                                    style={{
+                                                        width: `${percentage(day.entries, maxWeeklyEntries)}%`,
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </td>
+                    </tr>
 
-            <section
-                className="statistics-print-section statistics-print-current-week"
-                data-testid="statistics-print-current-week"
-            >
-                <div className="statistics-print-section-heading">
-                    <h2>Aktuelle Wochenübersicht</h2>
-                    <strong>
-                        {stats.weekly.totalEntries}{' '}
-                        {stats.weekly.totalEntries === 1
-                            ? 'Beratung'
-                            : 'Beratungen'}
-                    </strong>
-                </div>
-                <div className="statistics-print-days">
-                    {stats.weekly.days.map((day) => (
-                        <div key={day.date}>
-                            <span>{day.label}</span>
-                            <strong>{day.entries}</strong>
-                            <small>{day.date.slice(5)}</small>
-                            <div className="statistics-print-bar">
-                                <span
-                                    style={{
-                                        width: `${percentage(day.entries, maxWeeklyEntries)}%`,
-                                    }}
+                    {stats.weekly.semesterWeeks.length > 0 && (
+                        <tr>
+                            <td>
+                                <section className="statistics-print-section statistics-print-semester-weeks">
+                                    <h2>Semesterwochen</h2>
+                                    <div>
+                                        {stats.weekly.semesterWeeks.map(
+                                            (semesterWeek) => (
+                                                <p key={semesterWeek.start}>
+                                                    <span>
+                                                        {semesterWeek.label}
+                                                    </span>
+                                                    <small>
+                                                        {
+                                                            semesterWeek.rangeLabel
+                                                        }
+                                                    </small>
+                                                    <strong>
+                                                        {semesterWeek.entries}
+                                                    </strong>
+                                                </p>
+                                            ),
+                                        )}
+                                    </div>
+                                </section>
+                            </td>
+                        </tr>
+                    )}
+
+                    <tr>
+                        <td>
+                            <div
+                                className="statistics-print-breakdowns"
+                                data-testid="statistics-print-breakdowns"
+                            >
+                                <PrintBreakdown
+                                    title="Nach Fachbereich"
+                                    items={stats.faculties}
+                                />
+                                <PrintBreakdown
+                                    title="Nach Studiengang"
+                                    items={stats.degrees}
+                                />
+                                <PrintBreakdown
+                                    title="Nach Thema"
+                                    items={stats.topics}
                                 />
                             </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {stats.weekly.semesterWeeks.length > 0 && (
-                <section className="statistics-print-section statistics-print-semester-weeks">
-                    <h2>Semesterwochen</h2>
-                    <div>
-                        {stats.weekly.semesterWeeks.map((semesterWeek) => (
-                            <p key={semesterWeek.start}>
-                                <span>{semesterWeek.label}</span>
-                                <small>{semesterWeek.rangeLabel}</small>
-                                <strong>{semesterWeek.entries}</strong>
-                            </p>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            <div
-                className="statistics-print-breakdowns"
-                data-testid="statistics-print-breakdowns"
-            >
-                <PrintBreakdown
-                    title="Nach Fachbereich"
-                    items={stats.faculties}
-                />
-                <PrintBreakdown
-                    title="Nach Studiengang"
-                    items={stats.degrees}
-                />
-                <PrintBreakdown title="Nach Thema" items={stats.topics} />
-            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </article>
     );
 }

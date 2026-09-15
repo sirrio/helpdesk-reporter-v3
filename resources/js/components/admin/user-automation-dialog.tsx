@@ -95,8 +95,12 @@ function checkDescription(status: AutomationCheck['status']): string {
 
 export function UserAutomationDialog({
     automation,
+    query,
+    onSuccess,
 }: {
     automation: UserAutomation;
+    query: Record<string, string | number>;
+    onSuccess: () => void;
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const settingsForm = useForm({
@@ -127,15 +131,19 @@ export function UserAutomationDialog({
 
     function submitSettings(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        settingsForm.submit(updateUserAutomation(), {
+        settingsForm.submit(updateUserAutomation({ query }), {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => settingsForm.setDefaults(),
+            onSuccess: () => {
+                settingsForm.setDefaults();
+                onSuccess();
+            },
         });
     }
 
     function runHealthCheck(): void {
-        checkForm.submit(runUserAutomationCheck(), {
+        checkForm.submit(runUserAutomationCheck({ query }), {
+            onSuccess,
             preserveScroll: true,
             preserveState: true,
         });

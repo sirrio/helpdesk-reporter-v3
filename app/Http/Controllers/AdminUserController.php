@@ -9,7 +9,6 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +18,7 @@ class AdminUserController extends Controller
     /**
      * Display the user management page.
      */
-    public function index(AdminUserIndexRequest $request): Response
+    public function index(AdminUserIndexRequest $request): Response|RedirectResponse
     {
         $filters = $request->safe()->only([
             'search',
@@ -85,21 +84,29 @@ class AdminUserController extends Controller
             ->orderBy('deleted_at')
             ->orderBy('name')
             ->paginate(15)
-            ->withQueryString()
-            ->through(fn (User $user) => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'isMod' => $user->isMod,
-                'isAdmin' => $user->isAdmin,
-                'approvedAt' => $user->approved_at?->toISOString(),
-                'mustChangePassword' => $user->must_change_password,
-                'createdAt' => $user->created_at?->toISOString(),
-                'attendancesCount' => $user->attendances_count,
-                'isCurrentUser' => $request->user()->is($user),
-                'deletedAt' => $user->deleted_at?->toISOString(),
-                'anonymizedAt' => $user->anonymized_at?->toISOString(),
+            ->withQueryString();
+
+        if ($users->currentPage() > $users->lastPage()) {
+            return to_route('admin.users.index', [
+                ...$filters,
+                'page' => $users->lastPage(),
             ]);
+        }
+
+        $users->through(fn (User $user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'isMod' => $user->isMod,
+            'isAdmin' => $user->isAdmin,
+            'approvedAt' => $user->approved_at?->toISOString(),
+            'mustChangePassword' => $user->must_change_password,
+            'createdAt' => $user->created_at?->toISOString(),
+            'attendancesCount' => $user->attendances_count,
+            'isCurrentUser' => $request->user()->is($user),
+            'deletedAt' => $user->deleted_at?->toISOString(),
+            'anonymizedAt' => $user->anonymized_at?->toISOString(),
+        ]);
 
         return Inertia::render('admin/users/index', [
             'users' => $users,
@@ -129,6 +136,7 @@ class AdminUserController extends Controller
      */
     public function store(StoreAdminUserRequest $request): RedirectResponse
     {
+        $context = AdminUserIndexRequest::queryContext($request);
         $validated = $request->validated();
 
         User::query()->create([
@@ -146,7 +154,7 @@ class AdminUserController extends Controller
             'message' => __('Benutzer angelegt.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $context);
     }
 
     /**
@@ -154,6 +162,7 @@ class AdminUserController extends Controller
      */
     public function update(UpdateAdminUserRequest $request, User $user): RedirectResponse
     {
+        $context = AdminUserIndexRequest::queryContext($request);
         $validated = $request->validated();
 
         $passwordWasReset = filled($validated['password'] ?? null);
@@ -191,13 +200,13 @@ class AdminUserController extends Controller
                 : __('Benutzer aktualisiert.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $context);
     }
 
     /**
      * Deactivate a managed user.
      */
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(AdminUserIndexRequest $request, User $user): RedirectResponse
     {
         abort_if(
             $request->user()->is($user),
@@ -223,13 +232,13 @@ class AdminUserController extends Controller
             'message' => __('Benutzer deaktiviert.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $request->validated());
     }
 
     /**
      * Reactivate a managed user.
      */
-    public function restore(int $user): RedirectResponse
+    public function restore(AdminUserIndexRequest $request, int $user): RedirectResponse
     {
         $managedUser = User::withTrashed()->findOrFail($user);
 
@@ -246,13 +255,13 @@ class AdminUserController extends Controller
             'message' => __('Benutzer reaktiviert.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $request->validated());
     }
 
     /**
      * Approve a newly registered user account.
      */
-    public function approve(User $user): RedirectResponse
+    public function approve(AdminUserIndexRequest $request, User $user): RedirectResponse
     {
         $user->update(['approved_at' => now()]);
 
@@ -261,7 +270,7 @@ class AdminUserController extends Controller
             'message' => __('Benutzer freigeschaltet.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $request->validated());
     }
 
     /**

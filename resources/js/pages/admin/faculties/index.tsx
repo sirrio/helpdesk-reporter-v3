@@ -47,7 +47,11 @@ type FacultyItem = {
 type PaginationLink = { url: string | null; label: string; active: boolean };
 type Filters = { status: string };
 type Props = {
-    faculties: { data: FacultyItem[]; links: PaginationLink[] };
+    faculties: {
+        data: FacultyItem[];
+        links: PaginationLink[];
+        current_page: number;
+    };
     filters: Filters;
 };
 
@@ -58,7 +62,9 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
     const [editingFaculty, setEditingFaculty] = useState<FacultyItem | null>(
         null,
     );
-    const filterForm = useForm<Filters>(filters);
+    const listContext = {
+        query: { status: filters.status, page: faculties.current_page },
+    };
     const createForm = useForm({
         name: '',
     });
@@ -68,7 +74,7 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
 
     function submitCreate(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        createForm.submit(storeFaculty(), {
+        createForm.submit(storeFaculty(listContext), {
             preserveScroll: true,
             onSuccess: () => {
                 createForm.reset();
@@ -92,7 +98,7 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
             return;
         }
 
-        editForm.submit(updateFaculty(editingFaculty.id), {
+        editForm.submit(updateFaculty(editingFaculty.id, listContext), {
             preserveScroll: true,
             onSuccess: () => setEditingFaculty(null),
         });
@@ -114,7 +120,11 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <Select
-                            value={filterForm.data.status || ALL}
+                            value={
+                                filters.status && filters.status !== 'all'
+                                    ? filters.status
+                                    : ALL
+                            }
                             onValueChange={(value) =>
                                 router.visit(
                                     adminFacultiesIndex({
@@ -130,7 +140,10 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                 )
                             }
                         >
-                            <SelectTrigger className="w-full sm:w-44">
+                            <SelectTrigger
+                                aria-label="Fachbereiche filtern"
+                                className="w-full sm:w-44"
+                            >
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -282,9 +295,11 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                                 router.visit(
                                                                     destroyFaculty(
                                                                         faculty.id,
+                                                                        listContext,
                                                                     ),
                                                                     {
                                                                         method: 'delete',
+                                                                        preserveState: true,
                                                                         preserveScroll: true,
                                                                     },
                                                                 )
@@ -303,9 +318,11 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                             router.visit(
                                                                 restoreFaculty(
                                                                     faculty.id,
+                                                                    listContext,
                                                                 ),
                                                                 {
                                                                     method: 'patch',
+                                                                    preserveState: true,
                                                                     preserveScroll: true,
                                                                 },
                                                             )

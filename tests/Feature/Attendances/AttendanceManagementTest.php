@@ -72,7 +72,7 @@ it('shows only the authenticated tutors attendances and supports filtering', fun
             ));
 });
 
-it('stores a new attendance entry for the authenticated tutor', function () {
+it('stores a new attendance entry for the authenticated tutor', function (bool $filtered) {
     $user = User::factory()->create();
     Semester::factory()->create([
         'semester' => 'WS 2025/2026',
@@ -85,7 +85,13 @@ it('stores a new attendance entry for the authenticated tutor', function () {
         'faculty_id' => $faculty->id,
     ]);
 
-    $response = $this->actingAs($user)->post(route('attendances.store'), [
+    $returnUrl = route('attendances.index', $filtered ? ['topic' => 'physics', 'page' => 2] : []);
+    $this->actingAs($user);
+    if ($filtered) {
+        $this->from($returnUrl);
+    }
+
+    $response = $this->post(route('attendances.store'), [
         'semester' => 'WS 2025/2026',
         'date' => '2026-04-12',
         'startTime' => '09:00',
@@ -97,7 +103,7 @@ it('stores a new attendance entry for the authenticated tutor', function () {
         'visitors' => 4,
     ]);
 
-    $response->assertRedirect(route('attendances.index'));
+    $response->assertRedirect($returnUrl);
 
     $this->assertDatabaseHas('attendances', [
         'user_id' => $user->id,
@@ -113,7 +119,7 @@ it('stores a new attendance entry for the authenticated tutor', function () {
         'online' => true,
         'visitors' => 4,
     ]);
-});
+})->with([false, true]);
 
 it('filters the tutors attendances by the unspecified degree', function () {
     $user = User::factory()->create();

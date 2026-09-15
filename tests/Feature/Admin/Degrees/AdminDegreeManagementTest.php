@@ -139,3 +139,194 @@ it('forbids non admins from degree management', function () {
         ->get(route('admin.degrees.index'))
         ->assertForbidden();
 });
+
+it('filters degrees by their archive status', function (string $status, array $names) {
+    Degree::factory()->create(['name' => 'Active degree']);
+    Degree::factory()->create(['name' => 'Archived degree', 'deleted_at' => now()]);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('admin.degrees.index', ['status' => $status]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.status', $status)
+            ->where('degrees.data', fn ($degrees) => $degrees->pluck('name')->all() === $names));
+})->with([
+    ['all', ['Active degree', 'Archived degree']],
+    ['active', ['Active degree']],
+    ['archived', ['Archived degree']],
+]);
+
+it('keeps the filter and page when archiving restoring and editing degrees', function () {
+    $degree = Degree::factory()->for(Faculty::factory())->create();
+    $context = ['status' => 'all', 'page' => 2];
+    $this->actingAs(User::factory()->admin()->create());
+
+    $this->put(route('admin.degrees.update', ['degree' => $degree, ...$context]), [
+        'name' => 'Updated degree',
+        'faculty_id' => $degree->faculty_id,
+    ])->assertRedirect(route('admin.degrees.index', $context));
+
+    $this->delete(route('admin.degrees.destroy', ['degree' => $degree, ...$context]))
+        ->assertRedirect(route('admin.degrees.index', $context));
+
+    $this->patch(route('admin.degrees.restore', ['degree' => $degree->id, ...$context]))
+        ->assertRedirect(route('admin.degrees.index', $context));
+});
+
+it('returns to the last available page when archiving empties the current page', function () {
+    for ($number = 1; $number <= 30; $number++) {
+        fake()->unique(true);
+        Degree::factory()->create(['name' => sprintf('Degree %02d', $number)]);
+    }
+    $degree = Degree::factory()->create(['name' => 'ZZZ last degree']);
+    $context = ['status' => 'active', 'page' => 3];
+    $this->actingAs(User::factory()->admin()->create());
+
+    $this->delete(route('admin.degrees.destroy', ['degree' => $degree, ...$context]))
+        ->assertRedirect(route('admin.degrees.index', $context));
+
+    $this->get(route('admin.degrees.index', $context))
+        ->assertRedirect(route('admin.degrees.index', ['status' => 'active', 'page' => 2]));
+
+    $this->get(route('admin.degrees.index', ['status' => 'active', 'page' => 2]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('degrees.current_page', 2)
+            ->has('degrees.data', 15));
+});
+
+it('rejects invalid list context before mutating a degree', function (array $context, string $error) {
+    $degree = Degree::factory()->for(Faculty::factory())->create();
+    $this->actingAs(User::factory()->admin()->create());
+
+    $this->delete(route('admin.degrees.destroy', ['degree' => $degree, ...$context]))
+        ->assertSessionHasErrors($error);
+
+    $this->put(route('admin.degrees.update', ['degree' => $degree, ...$context]), [
+        'name' => 'Changed',
+        'faculty_id' => $degree->faculty_id,
+    ])->assertSessionHasErrors($error);
+
+    expect($degree->refresh()->trashed())->toBeFalse()
+        ->and($degree->name)->not->toBe('Changed');
+})->with([
+    [['status' => 'unknown'], 'status'],
+    [['page' => 0], 'page'],
+]);
+
+it('permanently deletes unused archived degrees and preserves list context', function () {
+    $degree = Degree::factory()->create(['deleted_at' => now()]);
+    $context = ['status' => 'archived', 'page' => 2];
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->delete(route('admin.degrees.force-destroy', ['degree' => $degree->id, ...$context]))
+        ->assertRedirect(route('admin.degrees.index', $context));
+
+    $this->assertModelMissing($degree);
+});
+
+it('prevents permanent deletion of active degrees', function () {
+    $degree = Degree::factory()->create();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->delete(route('admin.degrees.force-destroy', $degree->id))
+        ->assertSessionHasErrors('degree');
+
+    $this->assertModelExists($degree);
+    expect($degree->refresh()->trashed())->toBeFalse();
+});
+
+it('keeps archived degrees with attendance history', function (bool $archivedAttendance) {
+    $degree = Degree::factory()->create();
+    $attendance = Attendance::factory()->forDegree($degree)->create();
+    if ($archivedAttendance) {
+        $attendance->delete();
+    }
+    $degree->delete();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->delete(route('admin.degrees.force-destroy', $degree->id))
+        ->assertSessionHasErrors('degree');
+
+    $this->assertModelExists($degree);
+    $this->assertModelExists($attendance);
+    $this->get(route('admin.degrees.index', ['status' => 'archived']))
+        ->assertInertia(fn (Assert $page) => $page->where('degrees.data.0.canDelete', false));
+})->with([false, true]);
+
+it('forbids non admins from permanently deleting degrees', function () {
+    $degree = Degree::factory()->create(['deleted_at' => now()]);
+
+    $this->actingAs(User::factory()->create())
+        ->delete(route('admin.degrees.force-destroy', $degree->id))
+        ->assertForbidden();
+
+    $this->assertModelExists($degree);
+});
+
+it('preserves the degree list context when creating a degree', function () {
+    $faculty = Faculty::factory()->create();
+    $context = ['status' => 'active', 'page' => 2];
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.degrees.store', $context), [
+            'name' => 'New degree',
+            'faculty_id' => $faculty->id,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.degrees.index', $context));
+
+    $this->assertDatabaseHas('degrees', ['name' => 'New degree', 'faculty_id' => $faculty->id]);
+});
+
+it('rejects invalid degree list context before creating a degree', function () {
+    $faculty = Faculty::factory()->create();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.degrees.store', ['status' => 'invalid', 'page' => 0]), [
+            'name' => 'New degree',
+            'faculty_id' => $faculty->id,
+        ])
+        ->assertSessionHasErrors(['status', 'page']);
+
+    $this->assertDatabaseMissing('degrees', ['name' => 'New degree']);
+});
+
+it('preserves deleted attendance history when renaming a degree before archiving it', function () {
+    $degree = Degree::factory()->for(Faculty::factory())->create();
+    $attendance = Attendance::factory()->forDegree($degree)->create();
+    $attendance->delete();
+    $newFaculty = Faculty::factory()->create();
+    $this->actingAs(User::factory()->admin()->create());
+
+    $this->put(route('admin.degrees.update', $degree), [
+        'name' => 'Renamed degree',
+        'faculty_id' => $newFaculty->id,
+    ])->assertSessionHasNoErrors();
+
+    expect($attendance->refresh()->degree)->toBe('Renamed degree')
+        ->and($attendance->faculty)->toBe($newFaculty->name)
+        ->and($attendance->trashed())->toBeTrue();
+
+    $this->delete(route('admin.degrees.destroy', $degree))->assertSessionHasNoErrors();
+    $this->get(route('admin.degrees.index', ['status' => 'archived']))
+        ->assertInertia(fn (Assert $page) => $page->where('degrees.data.0.canDelete', false));
+    $this->delete(route('admin.degrees.force-destroy', $degree->id))
+        ->assertSessionHasErrors('degree');
+
+    $this->assertModelExists($degree);
+    $this->assertModelExists($attendance);
+});
+
+it('rejects a stale delete request after another admin restores the degree', function () {
+    $degree = Degree::factory()->create(['deleted_at' => now()]);
+    $this->actingAs(User::factory()->admin()->create());
+
+    $this->get(route('admin.degrees.index', ['status' => 'archived']))
+        ->assertInertia(fn (Assert $page) => $page->where('degrees.data.0.canDelete', true));
+    $this->patch(route('admin.degrees.restore', $degree->id))->assertSessionHasNoErrors();
+    $this->delete(route('admin.degrees.force-destroy', $degree->id))
+        ->assertSessionHasErrors('degree');
+
+    $this->assertModelExists($degree);
+    expect($degree->refresh()->trashed())->toBeFalse();
+});

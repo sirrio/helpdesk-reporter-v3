@@ -74,7 +74,11 @@ type ManagedUser = {
 type PaginationLink = { url: string | null; label: string; active: boolean };
 type Filters = { search: string; role: string; status: string };
 type Props = {
-    users: { data: ManagedUser[]; links: PaginationLink[] };
+    users: {
+        data: ManagedUser[];
+        links: PaginationLink[];
+        current_page: number;
+    };
     filters: Filters;
     automation: UserAutomation;
 };
@@ -132,6 +136,7 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
     const [isStatusActionProcessing, setIsStatusActionProcessing] =
         useState(false);
     const filterForm = useForm<Filters>(filters);
+    const query = { ...cleanUserFilters(filters), page: users.current_page };
     const createForm = useForm({
         name: '',
         email: '',
@@ -153,7 +158,7 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
             adminUsersIndex({ query: cleanUserFilters(filterForm.data) }),
             {
                 preserveScroll: true,
-                preserveState: true,
+                preserveState: 'errors',
                 replace: true,
             },
         );
@@ -163,16 +168,17 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
         filterForm.setData({ search: '', role: '', status: '' });
         router.visit(adminUsersIndex(), {
             preserveScroll: true,
-            preserveState: true,
+            preserveState: 'errors',
             replace: true,
         });
     }
 
     function submitCreate(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        createForm.submit(storeAdminUser(), {
+        createForm.submit(storeAdminUser({ query }), {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (page) => {
+                filterForm.setData(page.props.filters as Filters);
                 createForm.reset();
                 setIsCreateDialogOpen(false);
             },
@@ -201,9 +207,10 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
             return;
         }
 
-        editForm.submit(updateAdminUser(editingUser.id), {
+        editForm.submit(updateAdminUser(editingUser.id, { query }), {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (page) => {
+                filterForm.setData(page.props.filters as Filters);
                 setEditingUser(null);
                 editForm.reset('password');
             },
@@ -226,28 +233,38 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
             return;
         }
 
-        router.visit(destroyAdminUser(deactivatingUser.id), {
+        router.visit(destroyAdminUser(deactivatingUser.id, { query }), {
             method: 'delete',
+            preserveState: true,
             preserveScroll: true,
             onStart: () => setIsStatusActionProcessing(true),
-            onSuccess: () => setDeactivatingUser(null),
+            onSuccess: (page) => {
+                filterForm.setData(page.props.filters as Filters);
+                setDeactivatingUser(null);
+            },
             onFinish: () => setIsStatusActionProcessing(false),
         });
     }
 
     function reactivateUser(user: ManagedUser): void {
-        router.visit(restoreAdminUser(user.id), {
+        router.visit(restoreAdminUser(user.id, { query }), {
             method: 'patch',
+            preserveState: true,
             preserveScroll: true,
+            onSuccess: (page) =>
+                filterForm.setData(page.props.filters as Filters),
             onStart: () => setIsStatusActionProcessing(true),
             onFinish: () => setIsStatusActionProcessing(false),
         });
     }
 
     function approveUser(user: ManagedUser): void {
-        router.visit(approveAdminUser(user.id), {
+        router.visit(approveAdminUser(user.id, { query }), {
             method: 'patch',
+            preserveState: true,
             preserveScroll: true,
+            onSuccess: (page) =>
+                filterForm.setData(page.props.filters as Filters),
             onStart: () => setIsStatusActionProcessing(true),
             onFinish: () => setIsStatusActionProcessing(false),
         });
@@ -278,7 +295,11 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <UserAutomationDialog automation={automation} />
+                        <UserAutomationDialog
+                            automation={automation}
+                            query={query}
+                            onSuccess={() => filterForm.setData(filters)}
+                        />
                         <Dialog
                             open={isCreateDialogOpen}
                             onOpenChange={setIsCreateDialogOpen}

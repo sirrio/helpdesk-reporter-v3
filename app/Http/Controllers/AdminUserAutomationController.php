@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AdminUserIndexRequest;
 use App\Http\Requests\UpdateUserAutomationSettingsRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +15,8 @@ class AdminUserAutomationController extends Controller
      */
     public function __invoke(UpdateUserAutomationSettingsRequest $request): RedirectResponse
     {
+        $context = AdminUserIndexRequest::queryContext($request);
+
         SystemSetting::current()->update([
             'user_anonymization_months' => $request->integer('anonymizationMonths'),
         ]);
@@ -23,6 +26,6 @@ class AdminUserAutomationController extends Controller
             'message' => __('Anonymisierungsfrist gespeichert.'),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index', $context);
     }
 }

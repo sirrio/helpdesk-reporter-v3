@@ -43,18 +43,6 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-        ];
-    }
-
-    /**
-     * Define the props that are shared once per client session.
-     *
-     * @return array<string, mixed>
-     */
-    public function shareOnce(Request $request): array
-    {
-        return [
-            ...parent::shareOnce($request),
             'navigation.attendanceSemesters' => fn () => Semester::query()
                 ->orderByDesc('start')
                 ->pluck('semester')
