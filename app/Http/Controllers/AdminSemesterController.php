@@ -17,7 +17,7 @@ class AdminSemesterController extends Controller
     /**
      * Display the semester management page.
      */
-    public function index(AdminSemesterIndexRequest $request): Response
+    public function index(AdminSemesterIndexRequest $request): Response|RedirectResponse
     {
         $filters = $request->safe()->only(['status']);
 
@@ -34,15 +34,23 @@ class AdminSemesterController extends Controller
             )
             ->orderByDesc('start')
             ->paginate(15)
-            ->withQueryString()
-            ->through(fn (Semester $semester) => [
-                'id' => $semester->id,
-                'semester' => $semester->semester,
-                'start' => $semester->start?->toDateString(),
-                'end' => $semester->end?->toDateString(),
-                'attendancesCount' => $semester->attendances_count,
-                'deletedAt' => $semester->deleted_at?->toISOString(),
+            ->withQueryString();
+
+        if ($semesters->currentPage() > $semesters->lastPage()) {
+            return to_route('admin.semesters.index', [
+                ...$filters,
+                'page' => $semesters->lastPage(),
             ]);
+        }
+
+        $semesters->through(fn (Semester $semester) => [
+            'id' => $semester->id,
+            'semester' => $semester->semester,
+            'start' => $semester->start?->toDateString(),
+            'end' => $semester->end?->toDateString(),
+            'attendancesCount' => $semester->attendances_count,
+            'deletedAt' => $semester->deleted_at?->toISOString(),
+        ]);
 
         return Inertia::render('admin/semesters/index', [
             'semesters' => $semesters,
@@ -57,6 +65,8 @@ class AdminSemesterController extends Controller
      */
     public function store(StoreSemesterRequest $request): RedirectResponse
     {
+        $context = AdminSemesterIndexRequest::queryContext($request);
+
         Semester::query()->create($request->validated());
 
         Inertia::flash('toast', [
@@ -64,7 +74,7 @@ class AdminSemesterController extends Controller
             'message' => __('Semester angelegt.'),
         ]);
 
-        return to_route('admin.semesters.index');
+        return to_route('admin.semesters.index', $context);
     }
 
     /**
@@ -72,6 +82,7 @@ class AdminSemesterController extends Controller
      */
     public function update(UpdateSemesterRequest $request, Semester $semester): RedirectResponse
     {
+        $context = AdminSemesterIndexRequest::queryContext($request);
         $validated = $request->validated();
         $originalLabel = $semester->semester;
 
@@ -90,13 +101,13 @@ class AdminSemesterController extends Controller
             'message' => __('Semester aktualisiert.'),
         ]);
 
-        return to_route('admin.semesters.index');
+        return to_route('admin.semesters.index', $context);
     }
 
     /**
      * Archive a semester.
      */
-    public function destroy(Semester $semester): RedirectResponse
+    public function destroy(AdminSemesterIndexRequest $request, Semester $semester): RedirectResponse
     {
         $semester->delete();
 
@@ -105,13 +116,13 @@ class AdminSemesterController extends Controller
             'message' => __('Semester archiviert.'),
         ]);
 
-        return to_route('admin.semesters.index');
+        return to_route('admin.semesters.index', $request->validated());
     }
 
     /**
      * Restore an archived semester.
      */
-    public function restore(int $semester): RedirectResponse
+    public function restore(AdminSemesterIndexRequest $request, int $semester): RedirectResponse
     {
         Semester::withTrashed()->findOrFail($semester)->restore();
 
@@ -120,6 +131,6 @@ class AdminSemesterController extends Controller
             'message' => __('Semester wiederhergestellt.'),
         ]);
 
-        return to_route('admin.semesters.index');
+        return to_route('admin.semesters.index', $request->validated());
     }
 }

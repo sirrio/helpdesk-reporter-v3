@@ -38,3 +38,27 @@ it('shares attendance semesters for the sidebar in descending start order', func
                 'WS 2024/2025',
             ]));
 });
+
+it('refreshes semester navigation after changes even when the client remembers it', function () {
+    $admin = User::factory()->admin()->create();
+    $semester = Semester::factory()->create(['semester' => 'SS 2026']);
+    $this->actingAs($admin);
+
+    $this->get(route('admin.semesters.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('navigation.attendanceSemesters', ['SS 2026']));
+
+    $semester->delete();
+
+    $this->withHeader('X-Inertia-Except-Once-Props', 'navigation.attendanceSemesters')
+        ->get(route('admin.semesters.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('navigation.attendanceSemesters', []));
+
+    $semester->restore();
+    $semester->update(['semester' => 'SS 2026 aktualisiert']);
+
+    $this->get(route('admin.semesters.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('navigation.attendanceSemesters', ['SS 2026 aktualisiert']));
+});

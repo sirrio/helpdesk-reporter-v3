@@ -17,7 +17,7 @@ class AdminFacultyController extends Controller
     /**
      * Display the faculty management page.
      */
-    public function index(AdminFacultyIndexRequest $request): Response
+    public function index(AdminFacultyIndexRequest $request): Response|RedirectResponse
     {
         $filters = $request->safe()->only(['status']);
 
@@ -34,13 +34,21 @@ class AdminFacultyController extends Controller
             )
             ->orderBy('name')
             ->paginate(15)
-            ->withQueryString()
-            ->through(fn (Faculty $faculty) => [
-                'id' => $faculty->id,
-                'name' => $faculty->name,
-                'attendancesCount' => $faculty->attendances_count,
-                'deletedAt' => $faculty->deleted_at?->toISOString(),
+            ->withQueryString();
+
+        if ($faculties->currentPage() > $faculties->lastPage()) {
+            return to_route('admin.faculties.index', [
+                ...$filters,
+                'page' => $faculties->lastPage(),
             ]);
+        }
+
+        $faculties->through(fn (Faculty $faculty) => [
+            'id' => $faculty->id,
+            'name' => $faculty->name,
+            'attendancesCount' => $faculty->attendances_count,
+            'deletedAt' => $faculty->deleted_at?->toISOString(),
+        ]);
 
         return Inertia::render('admin/faculties/index', [
             'faculties' => $faculties,
@@ -55,6 +63,8 @@ class AdminFacultyController extends Controller
      */
     public function store(StoreFacultyRequest $request): RedirectResponse
     {
+        $context = AdminFacultyIndexRequest::queryContext($request);
+
         Faculty::query()->create($request->validated());
 
         Inertia::flash('toast', [
@@ -62,7 +72,7 @@ class AdminFacultyController extends Controller
             'message' => __('Fachbereich angelegt.'),
         ]);
 
-        return to_route('admin.faculties.index');
+        return to_route('admin.faculties.index', $context);
     }
 
     /**
@@ -70,6 +80,7 @@ class AdminFacultyController extends Controller
      */
     public function update(UpdateFacultyRequest $request, Faculty $faculty): RedirectResponse
     {
+        $context = AdminFacultyIndexRequest::queryContext($request);
         $validated = $request->validated();
         $originalName = $faculty->name;
 
@@ -88,13 +99,13 @@ class AdminFacultyController extends Controller
             'message' => __('Fachbereich aktualisiert.'),
         ]);
 
-        return to_route('admin.faculties.index');
+        return to_route('admin.faculties.index', $context);
     }
 
     /**
      * Archive a faculty.
      */
-    public function destroy(Faculty $faculty): RedirectResponse
+    public function destroy(AdminFacultyIndexRequest $request, Faculty $faculty): RedirectResponse
     {
         $faculty->delete();
 
@@ -103,13 +114,13 @@ class AdminFacultyController extends Controller
             'message' => __('Fachbereich archiviert.'),
         ]);
 
-        return to_route('admin.faculties.index');
+        return to_route('admin.faculties.index', $request->validated());
     }
 
     /**
      * Restore an archived faculty.
      */
-    public function restore(int $faculty): RedirectResponse
+    public function restore(AdminFacultyIndexRequest $request, int $faculty): RedirectResponse
     {
         Faculty::withTrashed()->findOrFail($faculty)->restore();
 
@@ -118,6 +129,6 @@ class AdminFacultyController extends Controller
             'message' => __('Fachbereich wiederhergestellt.'),
         ]);
 
-        return to_route('admin.faculties.index');
+        return to_route('admin.faculties.index', $request->validated());
     }
 }

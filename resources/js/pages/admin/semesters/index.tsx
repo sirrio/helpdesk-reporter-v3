@@ -56,7 +56,11 @@ type SemesterItem = {
 type PaginationLink = { url: string | null; label: string; active: boolean };
 type Filters = { status: string };
 type Props = {
-    semesters: { data: SemesterItem[]; links: PaginationLink[] };
+    semesters: {
+        data: SemesterItem[];
+        links: PaginationLink[];
+        current_page: number;
+    };
     filters: Filters;
 };
 
@@ -77,7 +81,9 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
     const [editingSemester, setEditingSemester] = useState<SemesterItem | null>(
         null,
     );
-    const filterForm = useForm<Filters>(filters);
+    const listContext = {
+        query: { status: filters.status, page: semesters.current_page },
+    };
     const createForm = useForm({
         semester: '',
         start: '',
@@ -91,7 +97,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
 
     function submitCreate(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        createForm.submit(storeSemester(), {
+        createForm.submit(storeSemester(listContext), {
             preserveScroll: true,
             onSuccess: () => {
                 createForm.reset();
@@ -117,7 +123,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
             return;
         }
 
-        editForm.submit(updateSemester(editingSemester.id), {
+        editForm.submit(updateSemester(editingSemester.id, listContext), {
             preserveScroll: true,
             onSuccess: () => setEditingSemester(null),
         });
@@ -139,7 +145,11 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <Select
-                            value={filterForm.data.status || ALL}
+                            value={
+                                filters.status && filters.status !== 'all'
+                                    ? filters.status
+                                    : ALL
+                            }
                             onValueChange={(value) =>
                                 router.visit(
                                     adminSemestersIndex({
@@ -155,7 +165,10 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                                 )
                             }
                         >
-                            <SelectTrigger className="w-full sm:w-44">
+                            <SelectTrigger
+                                aria-label="Semester filtern"
+                                className="w-full sm:w-44"
+                            >
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -369,6 +382,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                                                                 router.visit(
                                                                     destroySemester(
                                                                         semester.id,
+                                                                        listContext,
                                                                     ),
                                                                     {
                                                                         method: 'delete',
@@ -390,6 +404,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                                                             router.visit(
                                                                 restoreSemester(
                                                                     semester.id,
+                                                                    listContext,
                                                                 ),
                                                                 {
                                                                     method: 'patch',
