@@ -117,3 +117,32 @@ it('does not show admin content to non-admin users', function () {
 
     $response->assertForbidden();
 });
+
+it('keeps applied user filters and page after editing and deactivating', function (int $width, int $height) {
+    foreach (range(1, 35) as $number) {
+        User::factory()->create([
+            'name' => sprintf('Filter Tutor %02d', $number),
+            'approved_at' => now()->startOfDay(),
+        ]);
+    }
+
+    $page = visit('/admin/users?search=Filter&role=tutor&status=active&page=2')->resize($width, $height);
+    $page->assertSee('Filter Tutor 16')
+        ->fill('input#search', 'Unapplied draft')
+        ->click('article:has-text("Filter Tutor 16") button:has-text("Bearbeiten")')
+        ->fill('input#edit-name', 'Filter Tutor 16 Updated')
+        ->click('button:has-text("Änderungen speichern")')
+        ->assertSee('Filter Tutor 16 Updated')
+        ->assertQueryStringHas('search', 'Filter')
+        ->assertQueryStringHas('role', 'tutor')
+        ->assertQueryStringHas('status', 'active')
+        ->assertQueryStringHas('page', '2')
+        ->assertValue('input#search', 'Filter')
+        ->click('article:has-text("Filter Tutor 16 Updated") button:has-text("Deaktivieren")')
+        ->click('[role="dialog"] button:has-text("Deaktivieren")')
+        ->assertDontSee('Filter Tutor 16 Updated')
+        ->assertSee('Filter Tutor 17')
+        ->assertQueryStringHas('page', '2')
+        ->assertQueryStringHas('status', 'active')
+        ->assertNoJavaScriptErrors();
+})->with(['desktop' => [1440, 1000], 'mobile' => [390, 844]]);

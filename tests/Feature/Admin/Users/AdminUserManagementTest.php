@@ -291,3 +291,61 @@ it('forbids non admins from changing user activation status', function () {
         ->delete(route('admin.users.destroy', $managedUser))
         ->assertForbidden();
 });
+
+it('keeps the applied user filters after management actions', function (string $action, string $method) {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+    $context = ['search' => 'Tutor', 'role' => 'tutor', 'status' => 'active', 'page' => 2];
+    $parameters = $context;
+    if (in_array($action, ['update', 'destroy', 'restore', 'approve'], true)) {
+        $parameters['user'] = $user;
+    }
+    if ($action === 'restore') {
+        $user->delete();
+    }
+    $payload = match ($action) {
+        'store', 'update' => ['name' => 'Tutor Changed', 'email' => 'changed@example.com', 'password' => 'secretpass', 'isMod' => false, 'isAdmin' => false],
+        'automation.update' => ['anonymizationMonths' => 6],
+        default => [],
+    };
+
+    $this->actingAs($admin)->{$method}(route('admin.users.'.$action, $parameters), $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.users.index', $context));
+})->with([
+    'create' => ['store', 'post'],
+    'edit' => ['update', 'put'],
+    'deactivate' => ['destroy', 'delete'],
+    'restore' => ['restore', 'patch'],
+    'approve' => ['approve', 'patch'],
+    'automation settings' => ['automation.update', 'patch'],
+    'automation check' => ['automation.check', 'post'],
+]);
+
+it('returns to the last available filtered user page after deactivation', function () {
+    $admin = User::factory()->admin()->create();
+    User::factory()->count(15)->create(['name' => 'Matching Tutor']);
+    $user = User::factory()->create(['name' => 'Matching Tutor Last']);
+    $context = ['search' => 'Matching', 'role' => 'tutor', 'status' => 'active', 'page' => 2];
+
+    $this->actingAs($admin)->delete(route('admin.users.destroy', ['user' => $user, ...$context]))
+        ->assertRedirect(route('admin.users.index', $context));
+    $this->get(route('admin.users.index', $context))
+        ->assertRedirect(route('admin.users.index', [...$context, 'page' => 1]));
+    $this->get(route('admin.users.index', [...$context, 'page' => 1]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.search', 'Matching')
+            ->where('filters.role', 'tutor')
+            ->where('filters.status', 'active')
+            ->has('users.data', 15));
+});
+
+it('rejects invalid user list context before changing a user', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $this->actingAs($admin)->delete(route('admin.users.destroy', ['user' => $user, 'page' => -1]))
+        ->assertSessionHasErrors('page');
+
+    $this->assertNotSoftDeleted($user);
+});
