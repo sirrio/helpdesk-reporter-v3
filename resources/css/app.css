@@ -231,6 +231,7 @@
 
     .statistics-print-document > thead {
         display: table-header-group;
+        break-inside: avoid;
     }
 
     .statistics-print-document > tbody {
