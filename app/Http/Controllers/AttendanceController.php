@@ -141,7 +141,7 @@ class AttendanceController extends Controller
             'message' => __('Helpdesk-Eintrag gespeichert.'),
         ]);
 
-        return to_route('attendances.index');
+        return back(fallback: route('attendances.index'));
     }
 
     /**

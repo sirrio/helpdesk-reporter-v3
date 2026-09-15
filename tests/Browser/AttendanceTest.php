@@ -60,6 +60,37 @@ it('creates a new attendance entry', function () {
     ]);
 });
 
+it('keeps the applied attendance filters and page after creating an entry', function (int $width, int $height) {
+    Attendance::factory()->count(16)->for($this->user)->create([
+        ...array_fill_keys(array_keys(Attendance::topicOptions()), false),
+        'semester' => 'WS 2025/2026',
+        'degree' => 'Informatik',
+        'faculty' => 'Naturwissenschaften',
+        'physics' => true,
+        'date' => '2026-04-10',
+    ]);
+
+    $page = visit('/attendances?topic=physics&page=2')->resize($width, $height);
+    $page->assertPresent('[data-testid="attendance-card"]')
+        ->assertCount('[data-testid="attendance-card"]', 1)
+        ->click('button:has-text("Neuer Eintrag")')
+        ->assertSee('Neuen Eintrag erstellen')
+        ->fill('input#date', '2026-04-12')
+        ->fill('input#startTime', '09:00')
+        ->fill('input#endTime', '11:00')
+        ->click('Programmierung')
+        ->click('button:has-text("Eintrag speichern")')
+        ->assertDontSee('Neuen Eintrag erstellen')
+        ->assertQueryStringHas('topic', 'physics')
+        ->assertQueryStringHas('page', '2')
+        ->assertCount('[data-testid="attendance-card"]', 1)
+        ->click('button:has-text("Filter")')
+        ->assertSeeIn('[role="combobox"]:has-text("Physik")', 'Physik')
+        ->assertNoJavaScriptErrors();
+
+    expect($this->user->attendances()->count())->toBe(17);
+})->with(['desktop' => [1440, 1000], 'mobile' => [390, 844]]);
+
 it('shows validation error when end time is before start time', function () {
     $page = visit('/attendances');
 
