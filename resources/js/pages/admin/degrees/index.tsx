@@ -95,7 +95,7 @@ export default function AdminDegreesIndex({
 
     function submitCreate(event: FormEvent<HTMLFormElement>): void {
         event.preventDefault();
-        createForm.submit(storeDegree(), {
+        createForm.submit(storeDegree(listContext), {
             preserveScroll: true,
             onSuccess: () => {
                 createForm.reset();
@@ -357,6 +357,7 @@ export default function AdminDegreesIndex({
                                                                     ),
                                                                     {
                                                                         method: 'delete',
+                                                                        preserveState: true,
                                                                         preserveScroll: true,
                                                                     },
                                                                 )
@@ -379,6 +380,7 @@ export default function AdminDegreesIndex({
                                                                 ),
                                                                 {
                                                                     method: 'patch',
+                                                                    preserveState: true,
                                                                     preserveScroll: true,
                                                                 },
                                                             )

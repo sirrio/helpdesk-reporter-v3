@@ -2,6 +2,7 @@
 
 use App\Models\Attendance;
 use App\Models\Degree;
+use App\Models\Faculty;
 use App\Models\User;
 
 beforeEach(function () {
@@ -41,6 +42,7 @@ it('preserves the page filter and scroll position when archiving', function (int
     $page = visit('/admin/degrees?status=active&page=2')->resize($width, $height);
     $page->assertSee('Studiengang 16');
     $page->script('document.querySelectorAll("article")[5].scrollIntoView({block: "center"})');
+    $page->assertScript('window.scrollY > 0 && window.history.state?.documentScrollPosition?.top > 0', true);
     $page->click('article:has-text("Studiengang 21") button:has-text("Archivieren")')
         ->assertDontSee('Studiengang 21')
         ->assertQueryStringHas('status', 'active')
@@ -49,6 +51,40 @@ it('preserves the page filter and scroll position when archiving', function (int
         ->assertSeeIn('[aria-label="Studiengänge filtern"]', 'Aktiv')
         ->assertScript('window.scrollY > 0', true)
         ->assertNoJavaScriptErrors();
+})->with(['desktop' => [1440, 1000], 'mobile' => [390, 844]]);
+
+it('preserves the archived filter and page when creating a degree', function (int $width, int $height) {
+    $faculty = Faculty::factory()->create(['name' => 'Testfachbereich']);
+
+    foreach (range(1, 16) as $number) {
+        fake()->unique(true);
+        Degree::factory()->create([
+            'name' => sprintf('Archivierter Studiengang %02d', $number),
+            'faculty_id' => $faculty->id,
+            'deleted_at' => now(),
+        ]);
+    }
+
+    $page = visit('/admin/degrees?status=archived&page=2')->resize($width, $height);
+    $page->assertSee('Archivierter Studiengang 16')
+        ->click('button:has-text("Neuer Studiengang")')
+        ->fill('input#create-degree', 'Neuer Teststudiengang')
+        ->click('[role="dialog"] [role="combobox"]')
+        ->click('[role="option"]:has-text("Testfachbereich")')
+        ->click('button:has-text("Studiengang speichern")')
+        ->assertNotPresent('[role="dialog"]')
+        ->assertQueryStringHas('status', 'archived')
+        ->assertQueryStringHas('page', '2')
+        ->assertSeeIn('[aria-label="Studiengänge filtern"]', 'Archiviert')
+        ->assertSee('Archivierter Studiengang 16')
+        ->assertDontSee('Neuer Teststudiengang')
+        ->assertNoJavaScriptErrors();
+
+    $this->assertDatabaseHas('degrees', [
+        'name' => 'Neuer Teststudiengang',
+        'faculty_id' => $faculty->id,
+        'deleted_at' => null,
+    ]);
 })->with(['desktop' => [1440, 1000], 'mobile' => [390, 844]]);
 
 it('confirms deletion of unused archived degrees and protects used degrees', function (int $width, int $height) {

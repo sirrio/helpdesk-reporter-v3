@@ -299,6 +299,7 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                                     ),
                                                                     {
                                                                         method: 'delete',
+                                                                        preserveState: true,
                                                                         preserveScroll: true,
                                                                     },
                                                                 )
@@ -321,6 +322,7 @@ export default function AdminFacultiesIndex({ faculties, filters }: Props) {
                                                                 ),
                                                                 {
                                                                     method: 'patch',
+                                                                    preserveState: true,
                                                                     preserveScroll: true,
                                                                 },
                                                             )

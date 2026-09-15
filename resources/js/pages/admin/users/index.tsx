@@ -235,6 +235,7 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
 
         router.visit(destroyAdminUser(deactivatingUser.id, { query }), {
             method: 'delete',
+            preserveState: true,
             preserveScroll: true,
             onStart: () => setIsStatusActionProcessing(true),
             onSuccess: (page) => {
@@ -248,6 +249,7 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
     function reactivateUser(user: ManagedUser): void {
         router.visit(restoreAdminUser(user.id, { query }), {
             method: 'patch',
+            preserveState: true,
             preserveScroll: true,
             onSuccess: (page) =>
                 filterForm.setData(page.props.filters as Filters),
@@ -259,6 +261,7 @@ export default function AdminUsersIndex({ users, filters, automation }: Props) {
     function approveUser(user: ManagedUser): void {
         router.visit(approveAdminUser(user.id, { query }), {
             method: 'patch',
+            preserveState: true,
             preserveScroll: true,
             onSuccess: (page) =>
                 filterForm.setData(page.props.filters as Filters),

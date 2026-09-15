@@ -386,6 +386,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                                                                     ),
                                                                     {
                                                                         method: 'delete',
+                                                                        preserveState: true,
                                                                         preserveScroll: true,
                                                                     },
                                                                 )
@@ -408,6 +409,7 @@ export default function AdminSemestersIndex({ semesters, filters }: Props) {
                                                                 ),
                                                                 {
                                                                     method: 'patch',
+                                                                    preserveState: true,
                                                                     preserveScroll: true,
                                                                 },
                                                             )

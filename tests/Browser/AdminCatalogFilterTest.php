@@ -48,6 +48,7 @@ it('preserves catalog page filter and scroll after archiving', function (string 
     $page = visit('/admin/'.$path.'?status=active&page=2')->resize($width, $height);
     $page->assertSee('Eintrag 16');
     $page->script('document.querySelectorAll("article")[5].scrollIntoView({block: "center"})');
+    $page->assertScript('window.scrollY > 0 && window.history.state?.documentScrollPosition?.top > 0', true);
     $page->click('article:has-text("Eintrag 21") button:has-text("Archivieren")')
         ->assertDontSee('Eintrag 21')
         ->assertQueryStringHas('status', 'active')
