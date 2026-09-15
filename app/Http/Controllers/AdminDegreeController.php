@@ -73,6 +73,8 @@ class AdminDegreeController extends Controller
      */
     public function store(StoreDegreeRequest $request): RedirectResponse
     {
+        $context = AdminDegreeIndexRequest::queryContext($request);
+
         Degree::query()->create($request->validated());
 
         Inertia::flash('toast', [
@@ -80,7 +82,7 @@ class AdminDegreeController extends Controller
             'message' => __('Studiengang angelegt.'),
         ]);
 
-        return to_route('admin.degrees.index');
+        return to_route('admin.degrees.index', $context);
     }
 
     /**
@@ -96,7 +98,7 @@ class AdminDegreeController extends Controller
 
         DB::transaction(function () use ($degree, $validated, $originalName, $facultyName): void {
             if ($validated['name'] !== $originalName || $degree->faculty_id !== $validated['faculty_id']) {
-                Attendance::query()
+                Attendance::withTrashed()
                     ->where('degree', $originalName)
                     ->update([
                         'degree' => $validated['name'],
@@ -147,21 +149,23 @@ class AdminDegreeController extends Controller
 
     public function forceDestroy(AdminDegreeIndexRequest $request, int $degree): RedirectResponse
     {
-        $degree = Degree::withTrashed()->findOrFail($degree);
+        DB::transaction(function () use ($degree): void {
+            $degree = Degree::withTrashed()->lockForUpdate()->findOrFail($degree);
 
-        if (! $degree->trashed()) {
-            throw ValidationException::withMessages([
-                'degree' => __('Nur archivierte Studiengänge können endgültig gelöscht werden.'),
-            ]);
-        }
+            if (! $degree->trashed()) {
+                throw ValidationException::withMessages([
+                    'degree' => __('Nur archivierte Studiengänge können endgültig gelöscht werden.'),
+                ]);
+            }
 
-        if ($degree->attendances()->withTrashed()->exists()) {
-            throw ValidationException::withMessages([
-                'degree' => __('Studiengänge mit zugeordneten Einsätzen können nicht gelöscht werden.'),
-            ]);
-        }
+            if ($degree->attendances()->withTrashed()->exists()) {
+                throw ValidationException::withMessages([
+                    'degree' => __('Studiengänge mit zugeordneten Einsätzen können nicht gelöscht werden.'),
+                ]);
+            }
 
-        $degree->forceDelete();
+            $degree->forceDelete();
+        });
 
         Inertia::flash('toast', [
             'type' => 'success',

@@ -86,7 +86,7 @@ class AdminFacultyController extends Controller
 
         DB::transaction(function () use ($faculty, $validated, $originalName): void {
             if ($validated['name'] !== $originalName) {
-                Attendance::query()
+                Attendance::withTrashed()
                     ->where('faculty', $originalName)
                     ->update(['faculty' => $validated['name']]);
             }

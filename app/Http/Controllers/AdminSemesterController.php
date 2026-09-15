@@ -88,7 +88,7 @@ class AdminSemesterController extends Controller
 
         DB::transaction(function () use ($semester, $validated, $originalLabel): void {
             if ($validated['semester'] !== $originalLabel) {
-                Attendance::query()
+                Attendance::withTrashed()
                     ->where('semester', $originalLabel)
                     ->update(['semester' => $validated['semester']]);
             }

@@ -45,7 +45,7 @@ it('allows admins to create semesters', function () {
     ]);
 });
 
-it('updates semester labels and keeps attendance references in sync', function () {
+it('updates semester labels and keeps attendance references in sync', function (bool $archivedAttendance) {
     $admin = User::factory()->admin()->create();
     $tutor = User::factory()->create();
     $semester = Semester::factory()->create([
@@ -56,12 +56,16 @@ it('updates semester labels and keeps attendance references in sync', function (
     $degree = Degree::factory()->create(['name' => 'Informatik']);
     $faculty = Faculty::factory()->create(['name' => 'Naturwissenschaften']);
 
-    Attendance::factory()
+    $attendance = Attendance::factory()
         ->for($tutor)
         ->forSemester($semester)
         ->forDegree($degree)
         ->forFaculty($faculty)
         ->create();
+
+    if ($archivedAttendance) {
+        $attendance->delete();
+    }
 
     $response = $this->actingAs($admin)->put(route('admin.semesters.update', $semester), [
         'semester' => 'WS 2026/2027',
@@ -80,7 +84,14 @@ it('updates semester labels and keeps attendance references in sync', function (
         'user_id' => $tutor->id,
         'semester' => 'WS 2026/2027',
     ]);
-});
+
+    expect($attendance->refresh()->trashed())->toBe($archivedAttendance);
+    if ($archivedAttendance) {
+        $attendance->restore();
+    }
+
+    expect($semester->refresh()->attendances()->sole()->id)->toBe($attendance->id);
+})->with([false, true]);
 
 it('archives and restores semesters', function () {
     $admin = User::factory()->admin()->create();
